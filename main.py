@@ -1,82 +1,8 @@
-from typing import TypedDict, List, Dict, Optional
 from langgraph.graph import StateGraph, END
-
-# ==========================================
-# 1. DEFINIZIONE DELLO STATO DEL GRAFO
-# ==========================================
-class SchedulerState(TypedDict):
-    # Input iniziale
-    preferenze_nl: List[str]          # Preferenze in linguaggio naturale espresse dai dipendenti
-    
-    # Fase 1: Preferenze strutturate
-    vincoli_soft: Dict                # Preferenze tradotte in formato strutturato per OR-Tools
-    
-    # Fase 2/4: Bozza del piano
-    piano_attuale: Optional[Dict]     # L'assegnamento corrente dei turni generato dall'LLM
-    
-    # Fase 3a: Verifica vincoli Hard
-    hard_constraints_valid: bool      # Esito della verifica logica di OR-Tools
-    feedback_errori_hard: str         # Messaggio da passare all'LLM in caso di violazione vincoli di legge
-    
-    # Fase 3b: Valutazione Fairness
-    dipendente_piu_sfortunato: str    # ID del dipendente più scontento calcolato dalla funzione obiettivo
-    fairness_score: float             # Punteggio generale di equità del piano attuale
-    
-    # Criteri di terminazione
-    terminazione_raggiunta: bool      # Flag che indica se il ciclo iterativo deve interrompersi
-
-# ==========================================
-# 2. DEFINIZIONE DEI NODI (AGENTI)
-# ==========================================
-
-def extract_preferences_node(state: SchedulerState) -> SchedulerState:
-    """
-    Fase 1: Agente LLM che traduce il linguaggio naturale in vincoli strutturati [1, 6].
-    Implementazione futura: Prompt LangChain per estrarre JSON/Dict compatibile con OR-Tools.
-    """
-    # ... Logica dell'agente LangChain ...
-    return {"vincoli_soft": {"dipendente_A": "no_notte", "dipendente_B": "max_2_emergenze"}} # Esempio dummy
-
-
-def generate_or_refine_plan_node(state: SchedulerState) -> SchedulerState:
-    """
-    Fase 2 e Fase 4: Agente LLM che produce la bozza o la raffina tramite callback [2, 4].
-    Se riceve errori hard, corregge il piano. 
-    Se riceve un 'dipendente_piu_sfortunato', tenta di migliorare la sua situazione.
-    """
-    # ... Logica dell'agente LangChain che forza gli assegnamenti ...
-    return {"piano_attuale": {"assegnamenti": "dummy_data"}}
-
-
-def verify_hard_constraints_node(state: SchedulerState) -> SchedulerState:
-    """
-    Fase 3a: Agente simbolico (OR-Tools) che verifica la validità del piano [3, 7].
-    Controlla che nessuno faccia 2 turni consecutivi, limiti di ore, riposi, ecc.
-    """
-    # ... Logica OR-Tools per validare la matrice degli assegnamenti ...
-    # Se fallisce, restituisce hard_constraints_valid=False e il feedback_errori_hard
-    return {"hard_constraints_valid": True, "feedback_errori_hard": ""}
-
-
-def evaluate_fairness_node(state: SchedulerState) -> SchedulerState:
-    """
-    Fase 3b: Valutazione della funzione obiettivo basata sulle preferenze [8, 9].
-    Individua il dipendente più scontento.
-    Verifica anche i criteri di terminazione: impossibilità di migliorare senza 
-    violare i vincoli hard o peggiorare il livello minimo generale [5].
-    """
-    # ... Logica matematica/simbolica per calcolare lo scontento ...
-    # Se il piano è perfetto o non più migliorabile, imposta terminazione_raggiunta = True
-    return {
-        "dipendente_piu_sfortunato": "dipendente_C",
-        "fairness_score": 85.5,
-        "terminazione_raggiunta": False # O True se si raggiunge lo stallo
-    }
-
-
-# ==========================================
-# 3. FUNZIONI DI ROUTING (ARCHI CONDIZIONALI)
-# ==========================================
+from input_type import SchedulerState
+from agents.extract_preferences_agent import extract_preferences_node
+from agents.generate_or_refine_plan_agent import generate_or_refine_plan_node
+from agents.verify_evaluate_agent import verify_hard_constraints_node, evaluate_fairness_node
 
 def route_after_hard_check(state: SchedulerState) -> str:
     """
@@ -98,10 +24,6 @@ def route_after_fairness_check(state: SchedulerState) -> str:
         return END
     return "generate_or_refine_plan_node"
 
-
-# ==========================================
-# 4. COSTRUZIONE DEL GRAFO LANGGRAPH
-# ==========================================
 
 def build_workflow():
     workflow = StateGraph(SchedulerState)
@@ -139,9 +61,6 @@ def build_workflow():
     # Compilazione del grafo
     return workflow.compile()
 
-# ==========================================
-# 5. ESECUZIONE (ESEMPIO)
-# ==========================================
 if __name__ == "__main__":
     app = build_workflow()
     
@@ -151,8 +70,5 @@ if __name__ == "__main__":
             "Il dipendente B è disponibile in emergenza max 2 volte"
         ]
     }
-    
-    # Esegue il grafo fino alla terminazione
-    # (nella realtà itererà attraverso il ciclo di validazione/fairness)
     risultato_finale = app.invoke(input_iniziale)
     print("Piano finale generato:", risultato_finale.get("piano_attuale"))
