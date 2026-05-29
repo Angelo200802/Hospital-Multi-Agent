@@ -1,3 +1,5 @@
 langchain
 langgraph
 ortools
+langchain-google-genai
+dotenv
