@@ -10,5 +10,5 @@ def generate_or_refine_plan_node(state: SchedulerState) -> SchedulerState:
     Se riceve errori hard, corregge il piano. 
     Se riceve un 'dipendente_piu_sfortunato', tenta di migliorare la sua situazione.
     """
-    # ... Logica dell'agente LangChain che forza gli assegnamenti ...
+    
     return {"piano_attuale": {"assegnamenti": "dummy_data"}}

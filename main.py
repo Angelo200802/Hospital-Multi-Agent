@@ -3,6 +3,7 @@ from input_type import SchedulerState
 from agents.extract_preferences_agent import extract_preferences_node
 from agents.generate_or_refine_plan_agent import generate_or_refine_plan_node
 from agents.verify_evaluate_agent import verify_hard_constraints_node, evaluate_fairness_node
+from agents.return_output_agent import return_output_node
 
 def route_after_hard_check(state: SchedulerState) -> str:
     """
@@ -21,7 +22,7 @@ def route_after_fairness_check(state: SchedulerState) -> str:
     Altrimenti -> Callback all'LLM per raffinare il piano per il dipendente sfortunato [4].
     """
     if state.get("terminazione_raggiunta"):
-        return END
+        return "output_finale_node"
     return "generate_or_refine_plan_node"
 
 
@@ -33,7 +34,7 @@ def build_workflow():
     workflow.add_node("generate_or_refine_plan_node", generate_or_refine_plan_node)
     workflow.add_node("verify_hard_constraints_node", verify_hard_constraints_node)
     workflow.add_node("evaluate_fairness_node", evaluate_fairness_node)
-
+    workflow.add_node("output_finale_node", return_output_node)
     # Definizione del flusso base (Edges)
     workflow.set_entry_point("extract_preferences_node")
     workflow.add_edge("extract_preferences_node", "generate_or_refine_plan_node")
@@ -54,9 +55,11 @@ def build_workflow():
         route_after_fairness_check,
         {
             "generate_or_refine_plan_node": "generate_or_refine_plan_node",
-            END: END
+            "output_finale_node": "output_finale_node"
         }
     )
+
+    workflow.add_edge("output_finale_node", END)
 
     # Compilazione del grafo
     return workflow.compile()

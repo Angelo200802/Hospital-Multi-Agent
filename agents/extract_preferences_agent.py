@@ -45,16 +45,16 @@ Dovrai analizzare queste frasi e tradurle in un formato strutturato (JSON/Dict) 
 
 ["Il dipendente A preferisce i turni di mattina ed evitare i notturni, dando disponibilità tutti i giorni tranne il venerdì"] ->
 
-[{
+[{{
   "id_dipendente": "A",
   "turni_desiderati": ["mattina"],
   "turni_da_evitare": ["notte"],
-  "giorni_indisponibilita": ["venerdì"],
+  "giorni_indisponibilita": [],
   "max_emergenze": null
-}]
+}}]
 
 """
-from datetime import datetime
+
 class PreferenzeDipendente(BaseModel):
     id_dipendente: str = Field(..., description="L'identificativo del dipendente (es. 'A', 'B', 'C')")
     turni_desiderati: List[str] = Field(default=[], description="Elenco dei turni preferiti (es. 'mattina')")
@@ -74,8 +74,13 @@ def extract_preferences_node(state: SchedulerState) -> SchedulerState:
     Converte le frasi in linguaggio naturale in vincoli strutturati (soft/hard).
     """
     
-    testo_preferenze = "\n".join(state.get("preferenze_nl", []))
+    input_path = state.get("input_path", None)
+    if not input_path:
+        raise ValueError("Il percorso al file di input non è specificato")
     
+    with open(input_path, "r") as f:
+        testo_preferenze = f.read()
+
     llm = ChatGoogleGenerativeAI(
         model=GEMINI_MODEL, 
         google_api_key=GEMINI_API, 

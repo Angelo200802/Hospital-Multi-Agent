@@ -1,8 +1,8 @@
-from typing import TypedDict, List, Dict, Optional
-
+from typing import TypedDict, Dict, Optional
+from pathlib import Path
 class SchedulerState(TypedDict):
     # Input iniziale
-    preferenze_nl: List[str]          # Preferenze in linguaggio naturale espresse dai dipendenti
+    input_path: Path          # percorso al file di testo con le preferenze in linguaggio naturale (es. "preferenze.txt")
     
     # Fase 1: Preferenze strutturate
     vincoli_soft: Dict                # Preferenze tradotte in formato strutturato per OR-Tools
