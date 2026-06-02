@@ -1,7 +1,7 @@
 from ortools.sat.python import cp_model
 from typing import Dict, Any
 
-def verify_hard_constraints_ortools_node(state: Dict[str, Any]) -> Dict[str, Any]:
+def verify_hard_constraints_ortools(state: Dict[str, Any]) -> Dict[str, Any]:
     """
     Agente simbolico OR-Tools. Riceve il piano generato dall'LLM e 
     verifica rigorosamente i 4 vincoli hard sui dipendenti.

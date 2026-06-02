@@ -68,10 +68,7 @@ if __name__ == "__main__":
     app = build_workflow()
     
     input_iniziale = {
-        "preferenze_nl": [
-            "Il dipendente A preferisce i turni di mattina ed evitare i notturni",
-            "Il dipendente B è disponibile in emergenza max 2 volte"
-        ]
+        "input_path": "preferenze.txt"
     }
     risultato_finale = app.invoke(input_iniziale)
     print("Piano finale generato:", risultato_finale.get("piano_attuale"))
