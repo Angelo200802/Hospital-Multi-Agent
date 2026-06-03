@@ -68,7 +68,7 @@ if __name__ == "__main__":
     app = build_workflow()
     
     input_iniziale = {
-        "input_path": "preferenze.txt"
+        "input_path": "/home/angelo/Project/uni/AI/progetto/input/preferences.txt"
     }
     risultato_finale = app.invoke(input_iniziale)
     print("Piano finale generato:", risultato_finale.get("piano_attuale"))

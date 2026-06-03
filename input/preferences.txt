@@ -1,0 +1,24 @@
+🧑‍⚕️ Dipendenti Standard (13)
+Dipendente A "Sono il dipendente A, infermiere standard. Preferisco i turni di mattina. Non ho ferie programmate, ma vorrei che il mio giorno di riposo mensile cadesse di domenica."
+Dipendente B "Sono il dipendente B, standard. Non ho particolari preferenze sui giorni, ma vorrei evitare di fare turni di notte consecutivi perché mi pesano troppo. Mi adatto al resto."
+Dipendente C "Dipendente C, standard. Il 25 dicembre 2026 e il 26 dicembre 2026 sono fuori città in ferie, quindi sono indisponibile per l'intera giornata in entrambe le date. Per il resto del mese sono a completa disposizione."
+Dipendente D "Sono il dipendente D, lavoratore standard. Odio lavorare nel weekend e se possibile vorrei evitare i turni festivi. Sono però disponibile a coprire le emergenze, al massimo 2 volte nel mese."
+Dipendente E "Dipendente E, standard. Vorrei che il mio riposo di legge fosse assegnato esattamente il 24 dicembre 2026. Inoltre, preferisco di gran lunga lavorare il lunedì."
+Dipendente F "Dipendente F, standard. Non ho alcuna preferenza, assegnatemi pure i turni in base alle necessità del reparto."
+Dipendente G "Sono il dipendente G, standard. Eviterei i turni di pomeriggio e preferisco non lavorare di venerdì. Mettete zero alla mia disponibilità per le emergenze, non posso farne."
+Dipendente H "Dipendente H, standard. Non amo fare turni festivi consecutivi. Inoltre, per un impegno personale, il 31 dicembre 2026 non posso assolutamente fare il turno di notte (ma ci sono per mattina o pomeriggio)."
+Dipendente I "Dipendente I, standard. Vorrei tanto fare il turno di mattina il 1 gennaio 2027. Come giorno di riposo preferito indico il martedì."
+Dipendente J "Sono il dipendente J, standard. Sono disponibile a fare i turni di notte, ma eviterei i weekend. Posso coprire massimo 1 emergenza nel periodo di pianificazione."
+Dipendente K "Dipendente K, standard. L'8 dicembre 2026 sono in ferie, quindi indisponibile per tutta la giornata. Nessun'altra preferenza o richiesta."
+Dipendente L "Dipendente L, lavoratore standard. Non ho nessuna preferenza su giorni, ferie o turni. Fate pure voi."
+Dipendente M "Dipendente M, standard. Il mio giorno di riposo preferito è il sabato. Mi piace lavorare di pomeriggio, ma detesto i turni di notte."
+
+--------------
+
+👨‍⚕️ Dipendenti Specializzati (6)
+Dipendente N "Sono il dipendente N, operatore specializzato. Vorrei evitare del tutto i turni festivi. Come giorno di riposo preferito, vi chiedo esplicitamente di assegnarmelo il 15 dicembre 2026."
+Dipendente O "Dipendente O, specializzato. Vorrei evitare i turni di notte. Do la mia totale disponibilità per le emergenze, fino a un massimo di 3 turni extra."
+Dipendente P "Sono il dipendente P, operatore specializzato. Non ho preferenze specifiche o date di indisponibilità, ma vi chiedo solo di non farmi fare turni notturni consecutivi."
+Dipendente Q "Dipendente Q, specializzato. Mi trovo molto bene a lavorare di giovedì, quindi segnatelo come gradito. Fate attenzione al 25 dicembre 2026: non posso fare la mattina, ma ci sono per il pomeriggio o la notte."
+Dipendente R "Dipendente R, specializzato. Ho preso due giorni di ferie per Capodanno: il 31 dicembre 2026 e il 1 gennaio 2027 sono totalmente indisponibile."
+Dipendente S "Sono il dipendente S, specializzato. Non mi piace per niente lavorare di martedì. Il mio giorno di riposo preferito è la domenica. Per il resto, non ho altre indicazioni."

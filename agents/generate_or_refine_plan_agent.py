@@ -1,5 +1,21 @@
 from input_type import SchedulerState
 
+CALENDARIO = """
+Dicembre 2026
+ L|  M|  M|  G|  V|  S|  D
+ 7|  8|  9| 10| 11| 12| 13
+14| 15| 16| 17| 18| 19| 20
+21| 22| 23| 24| 25| 26| 27
+28| 29| 30| 31|  -|  -|  -
+
+Gennaio 2027
+ L| M| M| G| V| S| D|
+ -| -| -| -| 1| 2| 3
+ 4| 5| 6 
+
+Giorni festivi: 8 Dicembre, 25 Dicembre, 26 Dicembre, 1 Gennaio, 6 Gennaio
+"""
+
 PROMPT = """
 
 """

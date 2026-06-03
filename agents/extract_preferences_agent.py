@@ -12,22 +12,6 @@ load_dotenv()
 GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2b")
 GEMINI_API = os.getenv("GEMINI_API")
 
-CALENDARIO = """
-Dicembre 2026
- L|  M|  M|  G|  V|  S|  D
- 7|  8|  9| 10| 11| 12| 13
-14| 15| 16| 17| 18| 19| 20
-21| 22| 23| 24| 25| 26| 27
-28| 29| 30| 31|  -|  -|  -
-
-Gennaio 2027
- L| M| M| G| V| S| D|
- -| -| -| -| 1| 2| 3
- 4| 5| 6 
-
-Giorni festivi: 8 Dicembre, 25 Dicembre, 26 Dicembre, 1 Gennaio, 6 Gennaio
-"""
-
 SYSTEM_PROMPT = """
 ## Il tuo ruolo:
 Sei un assistente intelligente incaricato di estrarre e strutturare le preferenze dei dipendenti di una struttura ospedaliera per la pianificazione dei turni. 
@@ -46,16 +30,68 @@ Dovrai analizzare queste frasi e tradurle in un formato strutturato (JSON/Dict) 
 
 ## Esempio di output atteso:
 
-["Il dipendente A preferisce i turni di mattina ed evitare i notturni, dando disponibilità tutti i giorni tranne il venerdì"] ->
+Il dipendente C è un infermiere standard, preferisce lavorare la mattina, mentre odia i turni di notte e vorrebbe evitare il più possibile di lavorare di venerdì. 
+Vorrebbe che il suo riposo mensile cadesse di domenica. 
+Per le vacanze, il 24 e 25 dicembre 2026 è fuori città quindi non ci sarà per l'intera giornata. 
+Invece il 31 dicembre vorrebbe fare il turno di mattina. 
+Non vuole fare turni festivi consecutivi e può coprire al massimo 1 emergenza.
+Il dipendente D è operatore specializzato, vuole evitare di lavorare nei fine settimana e durante i festivi, 
+mentre preferisce concentrare i turni il lunedì e il martedì. 
+Come giorno di riposo obbligatorio richiede esplicitamente la data del 26 dicembre 2026. 
+A livello di indisponibilità non ha giorni interi di ferie, ma il 15 dicembre non può assolutamente fare né il pomeriggio né la notte. 
+Non ha alcun limite per le emergenze, ma non tollera fare turni di notte consecutivi.
 
-[{{
-  "id_dipendente": "A",
-  "is_specialised": false, 
+[
+
+{{
+  "id_dipendente": "C",
+  "is_specialised": false,
   "turni_desiderati": ["mattina"],
   "turni_da_evitare": ["notte"],
-  "giorni_indisponibilita": [11-12-2026, 18-12-2026, 25-12-2026, 1-1-2027],
-  "max_emergenze": null
-}}]
+  "giorni_settimana_graditi": [],
+  "giorni_settimana_sgraditi": ["venerdì"],
+  "richieste_specifiche": [
+    {{
+      "data": "2026-12-24",
+      "turno": ["tutti"],
+      "desiderato": false
+    }},
+    {{
+      "data": "2026-12-25",
+      "turno": ["tutti"],
+      "desiderato": false
+    }},
+    {{
+      "data": "2026-12-31",
+      "turno": ["mattina"],
+      "desiderato": true
+    }}
+  ],
+  "max_emergenze": 1,
+  "tolleranza_turni_consecutivi": ["festivo"],
+  "giorno_riposo_preferito": "domenica"
+}},
+
+{{
+  "id_dipendente": "D",
+  "is_specialised": true,
+  "turni_desiderati": [],
+  "turni_da_evitare": ["weekend", "festivo"],
+  "giorni_settimana_graditi": ["lunedì", "martedì"],
+  "giorni_settimana_sgraditi": [],
+  "richieste_specifiche": [
+    {{
+      "data": "2026-12-15",
+      "turno": ["pomeriggio", "notte"],
+      "desiderato": false
+    }}
+  ],
+  "max_emergenze": null,
+  "tolleranza_turni_consecutivi": ["notte"],
+  "giorno_riposo_preferito": "2026-12-26"
+}}
+
+]
 
 """
 
@@ -142,14 +178,12 @@ def extract_preferences_node(state: SchedulerState) -> SchedulerState:
     
     prompt = ChatPromptTemplate.from_messages([
         ("system", SYSTEM_PROMPT),
-        ("user", """
-         Il calendario a cui fai riferimento è il seguente: \n{calendario}\n
-         Ecco le preferenze espresse dai dipendenti:\n{preferenze_testuali}""")
+        ("user", """Ecco le preferenze espresse dai dipendenti:\n{preferenze_testuali}""")
     ])
     
+
     chain = prompt | llm_strutturato
     risultato_estrazione = chain.invoke({
-        "calendario": CALENDARIO,
         "preferenze_testuali": testo_preferenze
     })
     vincoli_dict = risultato_estrazione.model_dump()

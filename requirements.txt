@@ -3,3 +3,4 @@ langgraph
 ortools
 langchain-google-genai
 dotenv
+google-cloud-aiplatform[tokenization]
