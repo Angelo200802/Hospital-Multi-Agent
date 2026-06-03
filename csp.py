@@ -1,110 +1,134 @@
 from ortools.sat.python import cp_model
 from typing import Dict, Any
+from input_type import SchedulerForm
 
-def verify_hard_constraints_ortools(state: Dict[str, Any]) -> Dict[str, Any]:
+NUM_DAYS = 31       # 7 Dicembre - 7 Gennaio
+NUM_SHIFTS = 3      # 0=Mattina, 1=Pomeriggio, 2=Notte
+
+def create_hard_constraints(std_nurses: list, spec_nurses: list) -> SchedulerForm:
     """
     Agente simbolico OR-Tools. Riceve il piano generato dall'LLM e 
-    verifica rigorosamente i 4 vincoli hard sui dipendenti.
+    verifica rigorosamente i vincoli hard sui dipendenti.
     """
-    piano_llm = state.get("piano_attuale", {})
-    
-    num_nurses = 10
-    num_days = 31       # 7 Dicembre - 7 Gennaio
-    num_shifts = 3      # 0=Mattina, 1=Pomeriggio, 2=Notte
-    shift_map = {'M': 0, 'P': 1, 'N': 2}
+    nurses = std_nurses + spec_nurses
     
     model = cp_model.CpModel()
+    shifts = {}
     
     # 1. Inizializzazione Variabili Booleane
-    shifts = {}
-    for n in range(num_nurses):
-        for d in range(num_days):
-            for s in range(num_shifts):
+    for n in nurses:
+        for d in range(NUM_DAYS):
+            for s in range(NUM_SHIFTS):
                 shifts[(n, d, s)] = model.NewBoolVar(f'shift_n{n}_d{d}_s{s}')
                 
-    # ==============================================================
-    # 2. DEFINIZIONE DEI 4 VINCOLI HARD SUI DIPENDENTI
-    # ==============================================================
+   
+    for n in nurses:
+        for d in range(NUM_DAYS):
+            # VINCOLO 1: Massimo 1 turno al giorno per dipendente
+            model.AddAtMostOne([shifts[(n, d, s)] for s in range(NUM_SHIFTS)])
+            
+            # VINCOLO 2: Niente turni consecutivi a cavallo di due giorni (Notte -> Mattina)
+            if d < NUM_DAYS - 1:
+                model.AddImplication(shifts[(n, d, 2)], shifts[(n, d+1, 0)].Not())
+
+            # VINCOLO 3: 2 giorni di riposo garantiti dopo il turno di notte
+            if d < NUM_DAYS - 2:
+                model.Add(sum(shifts[(n, d+1, s)] for s in range(NUM_SHIFTS)) == 0).OnlyEnforceIf(shifts[(n, d, 2)])
+                model.Add(sum(shifts[(n, d+2, s)] for s in range(NUM_SHIFTS)) == 0).OnlyEnforceIf(shifts[(n, d, 2)])
+            elif d == NUM_DAYS - 2:
+                # Bordo del mese (ultimo e penultimo giorno)
+                model.Add(sum(shifts[(n, d+1, s)] for s in range(NUM_SHIFTS)) == 0).OnlyEnforceIf(shifts[(n, d, 2)])
     
-    for n in range(num_nurses):
-        
-        # Vincolo 1: Massimo 1 turno al giorno [3, 4]
-        for d in range(num_days):
-            model.AddAtMostOne(shifts[(n, d, s)] for s in range(num_shifts))
-            
-        # Vincolo 2: Turni non consecutivi [3, 5, 6]
-        # Evita che il dipendente faccia un turno il giorno prima e il turno mattutino il giorno dopo.
-        # (Nota: La Notte seguita dalla Mattina è già severamente vietata dal Vincolo 4,
-        # quindi qui copriamo il caso del Pomeriggio seguito dalla Mattina).
-        for d in range(num_days - 1):
-            model.AddImplication(shifts[(n, d, 1)], shifts[(n, d+1, 0)].Not())
-            
-        # Vincolo 3: Deve essere garantito almeno 1 giorno di riposo nel mese [3, 7]
-        giorni_lavorati = []
-        for d in range(num_days):
-            lavora_oggi = model.NewBoolVar(f'lavora_n{n}_d{d}')
-            # lavora_oggi vale 1 se l'infermiere fa almeno un turno, 0 altrimenti
-            model.Add(lavora_oggi == sum(shifts[(n, d, s)] for s in range(num_shifts)))
-            giorni_lavorati.append(lavora_oggi)
-            
-        # Affinché ci sia almeno 1 giorno libero su 31, la somma dei giorni presenziati deve essere <= 30
-        model.Add(sum(giorni_lavorati) <= num_days - 1)
-        
-        # Vincolo 4: Dopo la Notte, 2 giorni interi di riposo [2, 8, 9]
-        for d in range(num_days):
-            if d + 1 < num_days:
-                for s in range(num_shifts):
-                    model.AddImplication(shifts[(n, d, 2)], shifts[(n, d+1, s)].Not())
-            if d + 2 < num_days:
-                for s in range(num_shifts):
-                    model.AddImplication(shifts[(n, d, 2)], shifts[(n, d+2, s)].Not())
+    # VINCOLO 4: Requisiti di copertura per ogni turno
+    for d in range(NUM_DAYS):
+        for s in range(NUM_SHIFTS):
+            if len(spec_nurses) > 0:
+                # Caso d'uso B: Almeno 1 specializzato e almeno 3 persone in totale per turno
+                model.Add(sum(shifts[(n, d, s)] for n in spec_nurses) >= 1)
+                model.Add(sum(shifts[(n, d, s)] for n in nurses) >= 3)
+            else:
+                # Caso d'uso A: Almeno 2 lavoratori qualsiasi per turno
+                model.Add(sum(shifts[(n, d, s)] for n in nurses) >= 2)
 
-    # ==============================================================
-    # 3. VINCOLI STRUTTURALI (Necessari per il funzionamento del reparto)
-    # ==============================================================
-    # Tutti i turni devono essere coperti da almeno 2 persone [2]
-    for d in range(num_days):
-        for s in range(num_shifts):
-            model.Add(sum(shifts[(n, d, s)] for n in range(num_nurses)) >= 2)
-            
-    # Esattamente 25 turni mensili da smaltire per ciascun dipendente [1, 2]
-    for n in range(num_nurses):
-        model.Add(sum(shifts[(n, d, s)] for d in range(num_days) for s in range(num_shifts)) == 25)
+    
+    for n in nurses:
+        workload_mensile = []
+        # VINCOLO 5: 25 turni mensili (considerando la notte come carico di lavoro doppio)
+        for d in range(NUM_DAYS):
+            workload_mensile.append(shifts[(n, d, 0)])           # Mattina = peso 1
+            workload_mensile.append(shifts[(n, d, 1)])           # Pomeriggio = peso 1
+            workload_mensile.append(2 * shifts[(n, d, 2)])       # Notte = peso 2
+        model.Add(sum(workload_mensile) == 25)
 
-    # ==============================================================
-    # 4. INIEZIONE DEL PIANO DELL'LLM E VERIFICA LOGICA
-    # ==============================================================
+        # VINCOLO 6: Massimo 36 ore settimanali (Finestra mobile di 7 giorni)
+        for start_d in range(NUM_DAYS - 6):
+            workload_settimanale = []
+            for d in range(start_d, start_d + 7):
+                workload_settimanale.append(6 * shifts[(n, d, 0)]) 
+                workload_settimanale.append(6 * shifts[(n, d, 1)]) 
+                workload_settimanale.append(6 * 2 * shifts[(n, d, 2)]) 
+            
+            model.Add(sum(workload_settimanale) <= 36)
+
+        giorni_liberi = []
+        # VINCOLO 7: Almeno un giorno di riposo assoluto
+        for d in range(NUM_DAYS):
+            giorno_libero = model.NewBoolVar(f'giorno_libero_n{n}_d{d}')
+            model.Add(sum(shifts[(n, d, s)] for s in range(NUM_SHIFTS)) == 0).OnlyEnforceIf(giorno_libero)
+            giorni_liberi.append(giorno_libero)
+        
+        model.Add(sum(giorni_liberi) >= 1)
+
+    return model,shifts
+
+def assign_shifts_from_llm(model: cp_model.CpModel, shifts: Dict, piano_llm: Dict[str, Any],nurses: list[str]):
+    
+    shift_map = {
+        "M": 0,  # Mattina
+        "P": 1,  # Pomeriggio
+        "N": 2,  # Notte
+    }
+
     if piano_llm:
-        for n in range(num_nurses):
+        for n in nurses:
             # Ottiene la lista di 31 turni per il dipendente 'n' (es. ['M', 'R', 'N', ...])
             # Se un dipendente manca, riempie i suoi turni con Riposi ('R')
-            turni_assegnati = piano_llm.get(str(n), ['R'] * num_days)
-            for d in range(num_days):
+            turni_assegnati = piano_llm.get(str(n), ['R'] * NUM_DAYS)
+            
+            for d in range(NUM_DAYS):
                 turno_llm = turni_assegnati[d]
                 if turno_llm in shift_map:
                     s_assegnato = shift_map[turno_llm]
-                    for s in range(num_shifts):
+                    for s in range(NUM_SHIFTS):
                         if s == s_assegnato:
                             model.Add(shifts[(n, d, s)] == 1)
                         else:
                             model.Add(shifts[(n, d, s)] == 0)
                 else:
                     # Se ha il giorno di riposo ('R'), tutte le variabili di quel giorno valgono 0
-                    for s in range(num_shifts):
+                    for s in range(NUM_SHIFTS):
                         model.Add(shifts[(n, d, s)] == 0)
-
-    # Esecuzione del Risolutore
-    solver = cp_model.CpSolver()
-    status = solver.Solve(model)
     
-    # Valutazione finale
-    if status in [cp_model.FEASIBLE, cp_model.OPTIMAL]:
-        return {
-            "hard_constraints_valid": True,
-            "feedback_errori_hard": "Validazione superata. L'LLM ha rispettato tutti i vincoli."
-        }
-    else:
-        return {
-            "hard_constraints_valid": False,
-            "feedback_errori_hard": "Piano rigettato. L'LLM ha violato uno o più vincoli hard."
-        }
+    return model
+
+def solve_hard_constraints(state: SchedulerForm) -> bool:
+    """
+    Risolve il modello di OR-Tools e restituisce True se esiste una soluzione che soddisfa tutti i vincoli hard, altrimenti False.
+    """
+
+    vincoli_soft = state.get("vincoli_soft", {})
+    piano_llm = state.get("piano_attuale", {})
+
+    std_nurses = [dip.id for dip in vincoli_soft.preferenze_dipendenti if not dip.is_specialised]
+    spec_nurses = [dip.id for dip in vincoli_soft.preferenze_dipendenti if dip.is_specialised]
+    nurses = std_nurses + spec_nurses
+    nurses = len(std_nurses) + len(spec_nurses)
+    
+    model, shifts = create_hard_constraints(std_nurses, spec_nurses)
+    
+    assigned_model = assign_shifts_from_llm(model, shifts, piano_llm,nurses)
+
+    solver = cp_model.CpSolver()
+    status = solver.Solve(assigned_model)
+
+    print(f"Status: {status}")

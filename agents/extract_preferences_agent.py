@@ -1,10 +1,7 @@
-from input_type import SchedulerForm
-from typing import List, Optional, Union
-from pydantic import BaseModel, Field
+from input_type import SchedulerForm, VincoliStrutturati
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_google_genai import ChatGoogleGenerativeAI
 from dotenv import load_dotenv
-from enum import Enum
 import os
 
 
@@ -94,66 +91,6 @@ Non ha alcun limite per le emergenze, ma non tollera fare turni di notte consecu
 ]
 
 """
-
-class CategoriaTurno(Enum):
-    MATTINA = "mattina"
-    POMERIGGIO = "pomeriggio"
-    NOTTE = "notte"
-    FESTIVO = "festivo"
-    WEEKEND = "weekend"
-
-class TurnoReale(Enum):
-    MATTINA = "mattina"
-    POMERIGGIO = "pomeriggio"
-    NOTTE = "notte"
-    TUTTI = "tutti" 
-
-class GiornoSettimana(Enum):
-    LUNEDI = "lunedì"
-    MARTEDI = "martedì"
-    MERCOLEDI = "mercoledì"
-    GIOVEDI = "giovedì"
-    VENERDI = "venerdì"
-    SABATO = "sabato"
-    DOMENICA = "domenica"
-
-class RichiestaSpecifica(BaseModel):
-    data: str = Field(..., description="La data specifica (formato YYYY-MM-DD)")
-    turno: List[TurnoReale] = Field(..., description="Il turno interessato (mattina, pomeriggio, notte, o tutti se indisponibile l'intero giorno)")
-    desiderato: bool = Field(..., description="True se il dipendente VUOLE lavorare, False se NON PUO'/NON VUOLE lavorare in quel turno")
-
-class PreferenzeDipendente(BaseModel):
-    id_dipendente: str = Field(..., description="L'identificativo del dipendente (es. 'A')")
-    is_specialised: bool = Field(default=False, description="Indica se il dipendente è specializzato")
-    
-    turni_desiderati: List[CategoriaTurno] = Field(default=[], description="Elenco dei turni preferiti")
-    turni_da_evitare: List[CategoriaTurno] = Field(default=[], description="Elenco dei turni sgraditi")
-    giorni_settimana_graditi: List[GiornoSettimana] = Field(
-        default=[], 
-        description="Giorni della settimana ricorrenti in cui il dipendente PREFERISCE lavorare (es. 'lunedì', 'martedì')"
-    )
-    
-    giorni_settimana_sgraditi: List[GiornoSettimana] = Field(
-        default=[], 
-        description="Giorni della settimana ricorrenti in cui il dipendente preferisce NON lavorare (es. 'venerdì', 'domenica')"
-    )
-    richieste_specifiche: List[RichiestaSpecifica] = Field(
-        default=[], 
-        description="Richieste esatte per date specifiche. Se il dipendente non vuole lavorare in un giorno ricorrente (es. 'venerdì'), l'LLM deve calcolare le date esatte tra il 07-12-2026 e il 06-01-2027 e inserirle qui."
-    )
-    
-    max_emergenze: Optional[int] = Field(default=None, description="Max turni di emergenza accettati")
-
-    giorno_riposo_preferito: Optional[Union[GiornoSettimana, str]] = Field(
-        default=None, 
-        description="Il riposo desiderato. Può essere un giorno della settimana (es. 'domenica') OPPURE una data specifica in formato YYYY-MM-DD (es. '2026-12-24')."
-    )
-    tolleranza_turni_consecutivi: List[CategoriaTurno] = Field(default=[], description="Combinazioni di turni consecutivi sgraditi (es. festivi)")
-
-class VincoliStrutturati(BaseModel):
-    preferenze_dipendenti: List[PreferenzeDipendente] = Field(
-        description="Lista delle preferenze strutturate per tutti i dipendenti menzionati nell'input"
-    )
 
 
 def extract_preferences_node(state: SchedulerForm) -> SchedulerForm:
