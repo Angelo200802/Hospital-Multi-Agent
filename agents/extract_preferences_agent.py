@@ -1,4 +1,4 @@
-from input_type import SchedulerState
+from input_type import SchedulerForm
 from typing import List, Optional, Union
 from pydantic import BaseModel, Field
 from langchain_core.prompts import ChatPromptTemplate
@@ -156,7 +156,7 @@ class VincoliStrutturati(BaseModel):
     )
 
 
-def extract_preferences_node(state: SchedulerState) -> SchedulerState:
+def extract_preferences_node(state: SchedulerForm) -> SchedulerForm:
     """
     Agente LLM responsabile della Fase 1: raccolta e traduzione delle preferenze.
     Converte le frasi in linguaggio naturale in vincoli strutturati (soft/hard).
@@ -188,4 +188,19 @@ def extract_preferences_node(state: SchedulerState) -> SchedulerState:
     })
     vincoli_dict = risultato_estrazione.model_dump()
     
+    for dip in vincoli_dict.get("preferenze_dipendenti", []):
+        print(f"ID: {dip['id_dipendente']}")
+        print(f"  Specializzato: {dip['is_specialised']}")
+        print(f"  Turni desiderati: {[t.value for t in dip['turni_desiderati']]}")
+        print(f"  Turni da evitare: {[t.value for t in dip['turni_da_evitare']]}")
+        print(f"  Giorni settimana graditi: {[g.value for g in dip['giorni_settimana_graditi']]}")
+        print(f"  Giorni settimana sgraditi: {[g.value for g in dip['giorni_settimana_sgraditi']]}")
+        print(f"  Richieste specifiche:")
+        for req in dip['richieste_specifiche']  :
+            print(f"    - Data: {req['data']}, Turno: {[t.value for t in req['turno']]}, Desiderato: {req['desiderato']}")      
+        print(f"  Max emergenze: {dip['max_emergenze']}")
+        print(f"  Giorno riposo preferito: {dip['giorno_riposo_preferito']}")
+        print(f"  Tolleranza turni consecutivi: {[t.value for t in dip['tolleranza_turni_consecutivi']]}")
+        print("-------------------------------------")
+
     return {"vincoli_soft": vincoli_dict}

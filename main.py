@@ -1,11 +1,11 @@
 from langgraph.graph import StateGraph, END
-from input_type import SchedulerState
+from input_type import SchedulerForm
 from agents.extract_preferences_agent import extract_preferences_node
 from agents.generate_or_refine_plan_agent import generate_or_refine_plan_node
 from agents.verify_evaluate_agent import verify_hard_constraints_node, evaluate_fairness_node
 from agents.return_output_agent import return_output_node
 
-def route_after_hard_check(state: SchedulerState) -> str:
+def route_after_hard_check(state: SchedulerForm) -> str:
     """
     Decide dove andare dopo il controllo dei vincoli di legge.
     Se violati -> Torna all'LLM per rifare il piano [3].
@@ -15,7 +15,7 @@ def route_after_hard_check(state: SchedulerState) -> str:
         return "generate_or_refine_plan_node"
     return "evaluate_fairness_node"
 
-def route_after_fairness_check(state: SchedulerState) -> str:
+def route_after_fairness_check(state: SchedulerForm) -> str:
     """
     Decide se terminare o raffinare iterativamente.
     Se terminazione raggiunta -> Fine [5].
@@ -27,7 +27,7 @@ def route_after_fairness_check(state: SchedulerState) -> str:
 
 
 def build_workflow():
-    workflow = StateGraph(SchedulerState)
+    workflow = StateGraph(SchedulerForm)
 
     # Aggiunta dei nodi al grafo
     workflow.add_node("extract_preferences_node", extract_preferences_node)

@@ -1,6 +1,6 @@
-from input_type import SchedulerState
+from input_type import SchedulerForm
 
-def verify_hard_constraints_node(state: SchedulerState) -> SchedulerState:
+def verify_hard_constraints_node(state: SchedulerForm) -> SchedulerForm:
     """
     Fase 3a: Agente simbolico (OR-Tools) che verifica la validità del piano [3, 7].
     Controlla che nessuno faccia 2 turni consecutivi, limiti di ore, riposi, ecc.
@@ -10,7 +10,7 @@ def verify_hard_constraints_node(state: SchedulerState) -> SchedulerState:
     return {"hard_constraints_valid": True, "feedback_errori_hard": ""}
 
 
-def evaluate_fairness_node(state: SchedulerState) -> SchedulerState:
+def evaluate_fairness_node(state: SchedulerForm) -> SchedulerForm:
     """
     Fase 3b: Valutazione della funzione obiettivo basata sulle preferenze [8, 9].
     Individua il dipendente più scontento.

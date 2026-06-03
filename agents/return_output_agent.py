@@ -1,6 +1,6 @@
-from input_type import SchedulerState
+from input_type import SchedulerForm
 
-def return_output_node(state: SchedulerState) -> SchedulerState:
+def return_output_node(state: SchedulerForm) -> SchedulerForm:
     """
     Nodo finale che restituisce il piano definitivo in un formato leggibile.
     """
