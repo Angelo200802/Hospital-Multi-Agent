@@ -57,7 +57,6 @@ L’orchestrazione è gestita con `LangGraph`.
 	```
 
 4. Crea il file `.env` nella root del progetto.
-4. Crea il file `.env` nella root del progetto.
 
 ---
 
