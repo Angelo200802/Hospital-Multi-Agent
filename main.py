@@ -103,10 +103,10 @@ if __name__ == "__main__":
         path = f"{os.getcwd()}/input/{INPUT_FILE_NAME}"
         
         with open(path, "r") as f:
-            input_iniziale = {"input": path}
+            input_iniziale = f.read()
 
-        print("Avvio del processo con input: \n", input_iniziale['input'])
-        piano = app.invoke(input_iniziale)
+        print("Avvio del processo con input: \n", input_iniziale)
+        piano = app.invoke({"input":input_iniziale})
         print("Piano finale generato:\n", piano.get("piano_attuale"))
     else:
         raise ValueError("Il nome del file di input non è specificato nelle variabili d'ambiente")
