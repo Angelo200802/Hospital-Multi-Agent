@@ -35,26 +35,28 @@ L’orchestrazione è gestita con `LangGraph`.
 
 ## Installazione in locale
 
-1. Posizionati nella cartella del progetto:
+1. Clona il repository:
 
-	 ```bash
-	 cd /home/angelo/Project/uni/AI/progetto
-	 ```
+	```bash
+	git clone <URL_DEL_REPOSITORY>
+	cd <NOME_CARTELLA_PROGETTO>
+	```
 
 2. Crea e attiva un ambiente virtuale:
 
-	 ```bash
-	 python3 -m venv .venv
-	 source .venv/bin/activate
-	 ```
+	```bash
+	python3 -m venv .venv
+	source .venv/bin/activate
+	```
 
 3. Installa le dipendenze:
 
-	 ```bash
-	 pip install --upgrade pip
-	 pip install -r requirements.txt
-	 ```
+	```bash
+	pip install --upgrade pip
+	pip install -r requirements.txt
+	```
 
+4. Crea il file `.env` nella root del progetto.
 4. Crea il file `.env` nella root del progetto.
 
 ---
@@ -64,22 +66,15 @@ L’orchestrazione è gestita con `LangGraph`.
 Nel file `.env` inserisci:
 
 ```env
+# OBBLIGATORIA: nome del file in input
+INPUT_FILE_NAME = nome_file.estensione
 # OBBLIGATORIA: chiave API Gemini/Google
 GEMINI_API=la_tua_api_key
-
 # OPZIONALE: modello da usare (se omessa usa il default nel codice)
 GEMINI_MODEL=gemini-2b
 ```
 
-### Dettaglio chiavi
-
-- `GEMINI_API` **(obbligatoria)**  
-	Usata come `google_api_key` dal client `ChatGoogleGenerativeAI`.
-
-- `GEMINI_MODEL` **(opzionale)**  
-	Nome del modello Gemini da usare. Se non valorizzata, il codice usa il fallback `gemini-2b`.
-
----
+Se necessario, aggiorna anche il percorso del file di input in `main.py` in base alla posizione del file di testo.
 
 ## Avvio del progetto
 
@@ -89,6 +84,6 @@ Con ambiente virtuale attivo e `.env` configurato:
 python main.py
 ```
 
-Il workflow leggerà il file input indicato in `main.py` (`input/preferences.txt`) e stamperà il risultato finale.
+Il workflow leggerà il file input indicato in `main.py` e stamperà il risultato finale.
 
 ---

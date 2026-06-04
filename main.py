@@ -4,6 +4,11 @@ from agents.extract_preferences_agent import extract_preferences_node
 from agents.generate_or_refine_plan_agent import generate_or_refine_plan_node
 from agents.verify_evaluate_agent import verify_hard_constraints_node, evaluate_fairness_node
 from agents.return_output_agent import return_output_node
+from dotenv import load_dotenv
+import os
+
+load_dotenv()
+INPUT_FILE_NAME = os.getenv("INPUT_FILE_NAME")
 
 def route_after_hard_check(state: SchedulerForm) -> str:
     """
@@ -67,8 +72,10 @@ def build_workflow():
 if __name__ == "__main__":
     app = build_workflow()
     
-    input_iniziale = {
-        "input_path": "/home/angelo/Project/uni/AI/progetto/input/preferences.txt"
-    }
-    risultato_finale = app.invoke(input_iniziale)
-    print("Piano finale generato:", risultato_finale.get("piano_attuale"))
+    if INPUT_FILE_NAME:
+        input_iniziale = {
+            "input_path": f"{os.getcwd()}/input/{INPUT_FILE_NAME}"
+        }
+        print("Input iniziale:", input_iniziale)
+    else:
+        raise ValueError("Il nome del file di input non è specificato nelle variabili d'ambiente")
