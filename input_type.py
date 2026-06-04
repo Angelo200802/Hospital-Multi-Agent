@@ -64,21 +64,27 @@ class VincoliStrutturati(BaseModel):
         description="Lista delle preferenze strutturate per tutti i dipendenti menzionati nell'input"
     )
 
+class PreferenzeValidate(BaseModel):
+    valide : bool = Field(..., description="Indica se le preferenze estratte sono valide e coerenti con l'input originale")
+    suggerimenti: Optional[Dict[str, str]] = Field(default=None, description="Se valide è None, altrimenti contiene coppie chiave-valore dove la chiave è l'ID del dipendente e il valore è un suggerimento su cosa correggere nelle preferenze estratte per renderle valide")
+
 class SchedulerForm(TypedDict):
     # Input iniziale
     input_path: Path
     
-    #Preferenze strutturate
+    # Fase 1a/4: Estrazione preferenze
     vincoli_soft: VincoliStrutturati           
-    
+    # Fase 1b/4: Verifica preferenze estratte
+    preferenze_valide: PreferenzeValidate 
+
     # Fase 2/4: Bozza del piano
     piano_attuale: Optional[Dict]     
     
-    # Fase 3a: Verifica vincoli Hard
+    # Fase 3a/4: Verifica vincoli Hard
     hard_constraints_valid: bool      
     feedback_errori_hard: str         
     
-    # Fase 3b: Valutazione Fairness
+    # Fase 3b/4: Valutazione Fairness
     dipendente_piu_sfortunato: str    
     fairness_score: float             
     

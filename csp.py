@@ -122,7 +122,6 @@ def solve_hard_constraints(state: SchedulerForm) -> bool:
     std_nurses = [dip.id for dip in vincoli_soft.preferenze_dipendenti if not dip.is_specialised]
     spec_nurses = [dip.id for dip in vincoli_soft.preferenze_dipendenti if dip.is_specialised]
     nurses = std_nurses + spec_nurses
-    nurses = len(std_nurses) + len(spec_nurses)
     
     model, shifts = create_hard_constraints(std_nurses, spec_nurses)
     
