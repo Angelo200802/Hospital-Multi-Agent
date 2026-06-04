@@ -100,11 +100,13 @@ if __name__ == "__main__":
     app = build_workflow()
     
     if INPUT_FILE_NAME:
-        input_iniziale = {
-            "input_path": f"{os.getcwd()}/input/{INPUT_FILE_NAME}"
-        }
-        print("Avvio del processo con input: ", input_iniziale['input_path'])
+        path = f"{os.getcwd()}/input/{INPUT_FILE_NAME}"
+        
+        with open(path, "r") as f:
+            input_iniziale = {"input": path}
+
+        print("Avvio del processo con input: \n", input_iniziale['input'])
         piano = app.invoke(input_iniziale)
-        print("Piano finale generato:", piano.get("piano_attuale"))
+        print("Piano finale generato:\n", piano.get("piano_attuale"))
     else:
         raise ValueError("Il nome del file di input non è specificato nelle variabili d'ambiente")

@@ -99,13 +99,8 @@ def extract_preferences_node(state: SchedulerForm) -> SchedulerForm:
     Converte le frasi in linguaggio naturale in vincoli strutturati (soft/hard).
     """
     
-    input_path = state.get("input_path", None)
-    if not input_path:
-        raise ValueError("Il percorso al file di input non è specificato")
-    
-    with open(input_path, "r") as f:
-        testo_preferenze = f.read()
-
+    testo_preferenze = state.get("input", "").strip()
+  
     llm = ChatGoogleGenerativeAI(
         model=GEMINI_MODEL, 
         google_api_key=GEMINI_API, 
@@ -118,26 +113,14 @@ def extract_preferences_node(state: SchedulerForm) -> SchedulerForm:
         ("user", """Ecco le preferenze espresse dai dipendenti:\n{preferenze_testuali}""")
     ])
     
-
+    print("Estrazione preferenze in corso...")
+    
     chain = prompt | llm_strutturato
     risultato_estrazione = chain.invoke({
         "preferenze_testuali": testo_preferenze
     })
     vincoli_dict = risultato_estrazione.model_dump()
     
-    for dip in vincoli_dict.get("preferenze_dipendenti", []):
-        print(f"ID: {dip['id_dipendente']}")
-        print(f"  Specializzato: {dip['is_specialised']}")
-        print(f"  Turni desiderati: {[t.value for t in dip['turni_desiderati']]}")
-        print(f"  Turni da evitare: {[t.value for t in dip['turni_da_evitare']]}")
-        print(f"  Giorni settimana graditi: {[g.value for g in dip['giorni_settimana_graditi']]}")
-        print(f"  Giorni settimana sgraditi: {[g.value for g in dip['giorni_settimana_sgraditi']]}")
-        print(f"  Richieste specifiche:")
-        for req in dip['richieste_specifiche']  :
-            print(f"    - Data: {req['data']}, Turno: {[t.value for t in req['turno']]}, Desiderato: {req['desiderato']}")      
-        print(f"  Max emergenze: {dip['max_emergenze']}")
-        print(f"  Giorno riposo preferito: {dip['giorno_riposo_preferito']}")
-        print(f"  Tolleranza turni consecutivi: {[t.value for t in dip['tolleranza_turni_consecutivi']]}")
-        print("-------------------------------------")
+    print("Estrazione completata.")
 
     return {"vincoli_soft": vincoli_dict}

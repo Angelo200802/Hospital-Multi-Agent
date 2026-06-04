@@ -64,13 +64,42 @@ class VincoliStrutturati(BaseModel):
         description="Lista delle preferenze strutturate per tutti i dipendenti menzionati nell'input"
     )
 
+    def __str__(self):
+        stringa = "Vincoli Strutturati:\n"
+        for pref in self.preferenze_dipendenti:
+            stringa += f"  - Dipendente {pref.id_dipendente} (Specializzato: {pref.is_specialised}):\n"
+            stringa += f"    Turni desiderati: {[t.value for t in pref.turni_desiderati]}\n"
+            stringa += f"    Turni da evitare: {[t.value for t in pref.turni_da_evitare]}\n"
+            stringa += f"    Giorni della settimana graditi: {[g.value for g in pref.giorni_settimana_graditi]}\n"
+            stringa += f"    Giorni della settimana sgraditi: {[g.value for g in pref.giorni_settimana_sgraditi]}\n"
+            stringa += f"    Richieste specifiche:\n"
+            for req in pref.richieste_specifiche:
+                turni = [t.value for t in req.turno]
+                stringa += f"      - Data: {req.data}, Turno: {turni}, Desiderato: {req.desiderato}\n"
+            if pref.max_emergenze is not None:
+                stringa += f"    Max emergenze accettate: {pref.max_emergenze}\n"
+            if pref.giorno_riposo_preferito is not None:
+                riposo = pref.giorno_riposo_preferito.value if isinstance(pref.giorno_riposo_preferito, GiornoSettimana) else pref.giorno_riposo_preferito
+                stringa += f"    Giorno di riposo preferito: {riposo}\n"
+            if pref.tolleranza_turni_consecutivi:
+                turni_consecutivi = [t.value for t in pref.tolleranza_turni_consecutivi]
+                stringa += f"    Tolleranza turni consecutivi sgraditi: {turni_consecutivi}\n"
+        return stringa
+
 class PreferenzeValidate(BaseModel):
     valide : bool = Field(..., description="Indica se le preferenze estratte sono valide e coerenti con l'input originale")
     suggerimenti: Optional[Dict[str, str]] = Field(default=None, description="Se valide è None, altrimenti contiene coppie chiave-valore dove la chiave è l'ID del dipendente e il valore è un suggerimento su cosa correggere nelle preferenze estratte per renderle valide")
 
+    def __str__(self):
+        if self.valide:
+            return "Le preferenze estratte sono valide."
+        else:
+            suggerimenti_str = "\n".join([f"  - Dipendente {dip_id}: {suggerimento}" for dip_id, suggerimento in self.suggerimenti.items()])
+            return f"Suggerimenti:\n{suggerimenti_str}"
+
 class SchedulerForm(TypedDict):
     # Input iniziale
-    input_path: Path
+    input: str
     
     # Fase 1a/4: Estrazione preferenze
     vincoli_soft: VincoliStrutturati           
