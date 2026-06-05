@@ -61,7 +61,29 @@ def correct_preferences_node(state: SchedulerForm):
 
     print("Preferenze corrette (strutturate):\n", preferenze_corrette.__str__())
 
-    nuovi_vincoli = preferenze_corrette.model_dump().get("preferenze_dipendenti", []) + [pref for pref in vincoli_estratti.preferenze_dipendenti if pref not in [s.dipendente_id for s in preferenze_valide.suggerimenti]]
+    id_corretti = [p.id_dipendente for p in preferenze_corrette.preferenze_dipendenti]
+    
+    # 2. Inizializziamo la lista finale inserendo DIRETTAMENTE tutti i nuovi vincoli corretti
+    nuovi_vincoli = list(preferenze_corrette.preferenze_dipendenti)
+
+    # 3. Estraiamo i vecchi vincoli gestendo sia il caso in cui sia un oggetto sia un dict
+    if hasattr(vincoli_estratti, "preferenze_dipendenti"):
+        vecchia_lista = vincoli_estratti.preferenze_dipendenti
+    else:
+        # Se per qualche motivo è un dizionario (o viene letto come tale)
+        vecchia_lista = vincoli_estratti.get("preferenze_dipendenti", [])
+
+    # 4. Aggiungiamo i vecchi vincoli SOLO se il dipendente non è presente tra quelli appena corretti
+    for v in vecchia_lista:
+        # Recuperiamo l'ID sia se v è un oggetto sia se è un dict
+        v_id = v.id_dipendente if hasattr(v, "id_dipendente") else v.get("id_dipendente")
+        
+        if v_id not in id_corretti:
+            nuovi_vincoli.append(v)
+
+    # 5. Creiamo il container finale con la lista perfettamente pulita
     nuove_preferenze = VincoliStrutturati(preferenze_dipendenti=nuovi_vincoli)
-    print([s.id_dipendente for s in nuove_preferenze.preferenze_dipendenti])
+    
+    print("Lista finale dipendenti salvati:", [s.id_dipendente for s in nuove_preferenze.preferenze_dipendenti])
+    
     return {"vincoli_soft": nuove_preferenze.model_dump()}

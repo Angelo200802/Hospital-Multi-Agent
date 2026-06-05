@@ -7,7 +7,9 @@ from agents.generate_or_refine_plan_agent import generate_or_refine_plan_node
 from agents.verify_evaluate_agent import verify_hard_constraints_node, evaluate_fairness_node
 from agents.return_output_agent import return_output_node
 from dotenv import load_dotenv
-import os
+import os, langchain
+
+langchain.debug = True
 
 load_dotenv()
 INPUT_FILE_NAME = os.getenv("INPUT_FILE_NAME")
