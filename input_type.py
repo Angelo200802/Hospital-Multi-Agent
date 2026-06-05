@@ -86,16 +86,28 @@ class VincoliStrutturati(BaseModel):
                 stringa += f"    Tolleranza turni consecutivi sgraditi: {turni_consecutivi}\n"
         return stringa
 
+class Suggerimento(BaseModel):
+        dipendente_id: str = Field(..., description="ID del dipendente a cui si riferisce il suggerimento")
+        messaggio: str = Field(..., description="Il suggerimento specifico su cosa correggere nelle preferenze estratte per rendere valide")
+
 class PreferenzeValidate(BaseModel):
+    
     valide : bool = Field(..., description="Indica se le preferenze estratte sono valide e coerenti con l'input originale")
-    suggerimenti: Optional[Dict[str, str]] = Field(default=None, description="Se valide è None, altrimenti contiene coppie chiave-valore dove la chiave è l'ID del dipendente e il valore è un suggerimento su cosa correggere nelle preferenze estratte per renderle valide")
+    suggerimenti: Optional[List[Suggerimento]] = Field(default=None, description="Se valide è None, altrimenti contiene una lista di coppie chiave-valore dove la chiave è l'ID del dipendente e il valore è un suggerimento su cosa correggere nelle preferenze estratte per renderle valide")
 
     def __str__(self):
         if self.valide:
             return "Le preferenze estratte sono valide."
-        else:
-            suggerimenti_str = "\n".join([f"  - Dipendente {dip_id}: {suggerimento}" for dip_id, suggerimento in self.suggerimenti.items()])
-            return f"Suggerimenti:\n{suggerimenti_str}"
+        
+        if not self.suggerimenti:
+            return "Le preferenze non sono valide, ma nessun dettaglio è stato fornito."
+            
+        # Corretto l'accesso alla lista di oggetti Pydantic
+        suggerimenti_str = "\n".join([
+            f"  - Dipendente {s.dipendente_id}: {s.messaggio}" 
+            for s in self.suggerimenti
+        ])
+        return f"Suggerimenti:\n{suggerimenti_str}"
 
 class SchedulerForm(TypedDict):
     # Input iniziale

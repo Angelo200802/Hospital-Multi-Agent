@@ -38,6 +38,8 @@ Come giorno di riposo obbligatorio richiede esplicitamente la data del 26 dicemb
 A livello di indisponibilità non ha giorni interi di ferie, ma il 15 dicembre non può assolutamente fare né il pomeriggio né la notte. 
 Non ha alcun limite per le emergenze, ma non tollera fare turni di notte consecutivi.
 
+->
+
 [
 
 {{
@@ -119,7 +121,7 @@ def extract_preferences_node(state: SchedulerForm) -> SchedulerForm:
     risultato_estrazione = chain.invoke({
         "preferenze_testuali": testo_preferenze
     })
-
+    
     print("Preferenze estratte (strutturate):\n", risultato_estrazione.__str__())
     vincoli_dict = risultato_estrazione.model_dump()
     
