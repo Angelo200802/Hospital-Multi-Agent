@@ -1,5 +1,4 @@
-from typing import TypedDict, Dict, Optional
-from pathlib import Path
+from typing import Dict, Optional
 from typing import List, Optional, Union
 from pydantic import BaseModel, Field
 from enum import Enum
@@ -109,25 +108,25 @@ class PreferenzeValidate(BaseModel):
         ])
         return f"Suggerimenti:\n{suggerimenti_str}"
 
-class SchedulerForm(TypedDict):
+class SchedulerForm(BaseModel):
     # Input iniziale
     input: str
     
     # Fase 1a/4: Estrazione preferenze
-    vincoli_soft: VincoliStrutturati           
+    vincoli_soft: VincoliStrutturati = None      
     # Fase 1b/4: Verifica preferenze estratte
-    preferenze_valide: PreferenzeValidate 
+    preferenze_valide: PreferenzeValidate = None
 
     # Fase 2/4: Bozza del piano
-    piano_attuale: Optional[Dict]     
+    piano_attuale: Optional[Dict] = None    
     
     # Fase 3a/4: Verifica vincoli Hard
-    hard_constraints_valid: bool      
-    feedback_errori_hard: str         
+    hard_constraints_valid: bool = None    
+    feedback_errori_hard: str = None        
     
     # Fase 3b/4: Valutazione Fairness
-    dipendente_piu_sfortunato: str    
-    fairness_score: float             
+    dipendente_piu_sfortunato: str = None  
+    fairness_score: float = None             
     
     # Criteri di terminazione
-    terminazione_raggiunta: bool      
+    terminazione_raggiunta: bool = None     

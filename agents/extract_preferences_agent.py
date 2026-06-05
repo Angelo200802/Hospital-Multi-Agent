@@ -101,7 +101,7 @@ def extract_preferences_node(state: SchedulerForm) -> SchedulerForm:
     Converte le frasi in linguaggio naturale in vincoli strutturati (soft/hard).
     """
     
-    testo_preferenze = state.get("input", "")
+    testo_preferenze = state.input.strip()
   
     llm = ChatGoogleGenerativeAI(
         model=GEMINI_MODEL, 

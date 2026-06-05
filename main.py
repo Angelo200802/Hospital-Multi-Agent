@@ -18,7 +18,7 @@ def route_after_hard_check(state: SchedulerForm) -> str:
     Se violati -> Torna all'LLM per rifare il piano.
     Se rispettati -> Passa al calcolo della fairness.
     """
-    if not state.get("hard_constraints_valid"):
+    if not state.hard_constraints_valid:
         return "generate_or_refine_plan_node"
     return "evaluate_fairness_node"
 
@@ -28,7 +28,7 @@ def route_after_fairness_check(state: SchedulerForm) -> str:
     Se terminazione raggiunta -> Fine
     Altrimenti -> Callback all'LLM per raffinare il piano per il dipendente sfortunato [4].
     """
-    if state.get("terminazione_raggiunta"):
+    if state.terminazione_raggiunta:
         return "output_finale_node"
     return "generate_or_refine_plan_node"
 
@@ -38,9 +38,9 @@ def route_after_preferences_check(state: SchedulerForm) -> str:
     Se preferenze non valide -> Il prossimo agente corregge le preferenze.
     Se preferenze valide -> Procedi alla generazione del piano.
     """
-    preferenze = state.get("preferenze_valide")
-
-    if preferenze.valide:
+    preferenze = state.preferenze_valide
+    
+    if preferenze and preferenze.valide:
         return "generate_or_refine_plan_node"
     else:
         return "correct_preferences_node"

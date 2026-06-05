@@ -45,8 +45,8 @@ L'output deve seguire rigorosamente lo schema strutturato richiesto, che prevede
 
 def verify_extracted_preferences_node(state: SchedulerForm):
 
-    testo_preferenze = state.get("input", "").strip()   
-    vincoli_estratti = state.get("vincoli_soft", {}).__str__()
+    testo_preferenze = state.input.strip()   
+    vincoli_estratti = state.vincoli_soft.__str__() if state.vincoli_soft else "{}"
 
     llm = ChatGoogleGenerativeAI(
         model=GEMINI_MODEL, 
@@ -69,9 +69,6 @@ def verify_extracted_preferences_node(state: SchedulerForm):
         "testo_preferenze": testo_preferenze,
         "vincoli_estratti": vincoli_estratti
     })
-
-    print("Preferenze errate:")
-    print(verifica.model_dump())
 
     print("Verifica completata.")
 
