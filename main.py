@@ -94,7 +94,6 @@ def build_workflow():
     )
 
     workflow.add_edge("output_finale_node", END)
-
     # Compilazione del grafo
     return workflow.compile()
 
