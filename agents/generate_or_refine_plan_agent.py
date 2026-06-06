@@ -2,6 +2,8 @@ from input_type import SchedulerForm, Piano
 from llm import llm_call
 
 CALENDARIO = """
+## Calendario da Seguire per la Pianificazione dei Turni:
+
 Dicembre 2026
  L|  M|  M|  G|  V|  S|  D
  7|  8|  9| 10| 11| 12| 13
@@ -14,15 +16,50 @@ Gennaio 2027
  -| -| -| -| 1| 2| 3
  4| 5| 6 
 
-Giorni festivi: 8 Dicembre, 25 Dicembre, 26 Dicembre, 1 Gennaio, 6 Gennaio
+**Giorni festivi**: 8 Dicembre, 25 Dicembre, 26 Dicembre, 1 Gennaio, 6 Gennaio
+"""
+
+SYSTEM_PROMPT = """
+## Il tuo Ruolo:
+Sei un agente intelligente incaricato di generare o raffinare un piano di turni per un gruppo di dipendenti di una struttura ospedaliera, tenendo conto delle loro preferenze e dei vincoli operativi. 
+Il tuo obiettivo è creare/raffinare un piano che sia il più possibile equo e soddisfacente per tutti i dipendenti, rispettando al contempo le esigenze dell'organizzazione.
 """
 
 PROMPT_GENERATE = """
+## Cosa Devi Fare:
+Devi **generare per la prima volta** un piano di turni basato sui vincoli e le preferenze estratte dall'Agente di Estrazione Preferenze.
+Il piano deve essere conforme ai vincoli hard e cercare di massimizzare la soddisfazione delle preferenze dei dipendenti, tenendo conto dei vincoli soft.
 
+{hard_constraints}
+
+## Il tuo Output:
+Devi restituire un piano di turni completo per tutti i dipendenti per ogni giorno del periodo di pianificazione (7 Dicembre - 7 Gennaio).
+Per ogni dipendente devi creare una lista di 31 turni (es. Dipendente A -> ['M', 'R', 'N', ...]) che rappresentano i turni assegnati per ogni giorno del mese, dove 'M' = Mattina, 'P' = Pomeriggio, 'N' = Notte, 'R' = Riposo.
+Restituisci il piano nel formato strutturato indicato.
 """
 
 PROMPT_REFINE = """
+## Cosa Devi Fare:
+Devi raffinare il piano di turni esistente in base al feedback ricevuto.
 
+{hard_constraints}
+
+## Il tuo Output:
+Devi restituire un nuovo piano di turni che tenga conto del feedback ricevuto sui vincoli hard violati oppure che migliori la situazione del dipendente più sfortunato.
+
+"""
+
+HARD_CONSTRAINTS = """
+## Vincoli Hard da Rispettare Assolutamente:
+- Ogni dipendente può lavorare al **massimo un turno al giorno**.
+- Non sono permessi turni consecutivi a cavallo di due giorni (es. Notte -> Mattina).
+- Dopo un turno di notte, il dipendente deve avere **almeno 2 giorni di riposo**.
+- Requisiti di copertura per ogni turno:
+    - Se ci sono dipendenti specializzati, ogni turno deve avere **almeno 1 specializzato** e **almeno 3 persone in totale**.
+    - Se non ci sono dipendenti specializzati, ogni turno deve avere **almeno 2 lavoratori qualsiasi**.
+- Ogni dipendente deve lavorare esattamente **25 turni mensili** (considerando la notte come carico di lavoro doppio).
+- Ogni dipendente può lavorare per un **massimo di 36 ore settimanali** (ogni turno dura 6 ore tranne la notte che dura 12 ore).
+- All'interno del mese di lavoro ogni dipendente deve avere **almeno un giorno di riposo garantito**.
 """
 
 def generate_or_refine_plan_node(state: SchedulerForm) -> SchedulerForm:
@@ -32,13 +69,23 @@ def generate_or_refine_plan_node(state: SchedulerForm) -> SchedulerForm:
     Se riceve un 'dipendente_piu_sfortunato', tenta di migliorare la sua situazione.
     """
     
-    prompt_variables = { "calendario": CALENDARIO }
+    prompt_variables = { "calendario": CALENDARIO , 
+                        "hard_constraints": HARD_CONSTRAINTS 
+                    }
     prompts = []
 
     if state.retry:
+        
+        prompts.append(("system", SYSTEM_PROMPT +"\n"+ PROMPT_REFINE))
+        prompt_variables["feedback_errori_hard"] = state.feedback_errori_hard
+        prompt_variables["dipendente_piu_sfortunato"] = state.dipendente_piu_sfortunato
+        prompt_variables["fairness_score"] = state.fairness_score
+        
         piano : str = state.piano_attuale.__str__()
         prompt_variables["piano_attuale"] = piano
     else:
+        prompts.append(("system", SYSTEM_PROMPT +"\n"+ PROMPT_GENERATE))
+        prompts.append(("user", "Calendario da seguire: {calendario}\nAgente Estrattore Preferenze [Output]: {vincoli_soft}"))
         prompt_variables["vincoli_soft"] = state.vincoli_soft.__str__()
 
     piano_attuale = llm_call(

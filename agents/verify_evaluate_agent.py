@@ -1,12 +1,14 @@
 from input_type import SchedulerForm
+from csp import solve_hard_constraints
 
 def verify_hard_constraints_node(state: SchedulerForm) -> SchedulerForm:
     """
     Fase 3a: Agente simbolico (OR-Tools) che verifica la validità del piano [3, 7].
     Controlla che nessuno faccia 2 turni consecutivi, limiti di ore, riposi, ecc.
     """
-    # ... Logica OR-Tools per validare la matrice degli assegnamenti ...
-    # Se fallisce, restituisce hard_constraints_valid=False e il feedback_errori_hard
+    
+    solve_hard_constraints(state)
+
     return {"hard_constraints_valid": True, "feedback_errori_hard": ""}
 
 
