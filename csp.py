@@ -1,11 +1,11 @@
 from ortools.sat.python import cp_model
-from typing import Dict, Any
-from input_type import SchedulerForm
+from typing import Dict, Any, Tuple
+from input_type import SchedulerForm, Piano
 
 NUM_DAYS = 31       # 7 Dicembre - 7 Gennaio
 NUM_SHIFTS = 3      # 0=Mattina, 1=Pomeriggio, 2=Notte
 
-def create_hard_constraints(std_nurses: list, spec_nurses: list) -> SchedulerForm:
+def create_hard_constraints(std_nurses: list, spec_nurses: list) -> Tuple[cp_model.CpModel, Dict]:
     """
     Agente simbolico OR-Tools. Riceve il piano generato dall'LLM e 
     verifica rigorosamente i vincoli hard sui dipendenti.
@@ -81,7 +81,7 @@ def create_hard_constraints(std_nurses: list, spec_nurses: list) -> SchedulerFor
 
     return model,shifts
 
-def assign_shifts_from_llm(model: cp_model.CpModel, shifts: Dict, piano_llm: Dict[str, Any],nurses: list[str]):
+def assign_shifts_from_llm(model: cp_model.CpModel, shifts: Dict, piano_llm: Piano,nurses: list[str]) -> cp_model.CpModel:
     
     shift_map = {
         "M": 0,  # Mattina
@@ -93,7 +93,7 @@ def assign_shifts_from_llm(model: cp_model.CpModel, shifts: Dict, piano_llm: Dic
         for n in nurses:
             # Ottiene la lista di 31 turni per il dipendente 'n' (es. ['M', 'R', 'N', ...])
             # Se un dipendente manca, riempie i suoi turni con Riposi ('R')
-            turni_assegnati = piano_llm.get(str(n), ['R'] * NUM_DAYS)
+            turni_assegnati = [piano_n for piano_n in piano_llm.assegnamenti if piano_n.id_dipendente == str(n)][0].turni_assegnati
             
             for d in range(NUM_DAYS):
                 turno_llm = turni_assegnati[d]
@@ -116,11 +116,11 @@ def solve_hard_constraints(state: SchedulerForm) -> bool:
     Risolve il modello di OR-Tools e restituisce True se esiste una soluzione che soddisfa tutti i vincoli hard, altrimenti False.
     """
 
-    vincoli_soft = state.get("vincoli_soft", {})
-    piano_llm = state.get("piano_attuale", {})
+    vincoli_soft = state.vincoli_soft
+    piano_llm = state.piano_attuale
 
-    std_nurses = [dip.id for dip in vincoli_soft.preferenze_dipendenti if not dip.is_specialised]
-    spec_nurses = [dip.id for dip in vincoli_soft.preferenze_dipendenti if dip.is_specialised]
+    std_nurses = [dip.id_dipendente for dip in vincoli_soft.preferenze_dipendenti if not dip.is_specialised]
+    spec_nurses = [dip.id_dipendente for dip in vincoli_soft.preferenze_dipendenti if dip.is_specialised]
     nurses = std_nurses + spec_nurses
     
     model, shifts = create_hard_constraints(std_nurses, spec_nurses)

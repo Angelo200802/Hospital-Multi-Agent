@@ -12,7 +12,7 @@ Il tuo compito è correggere le preferenze estratte da un agente LLM per renderl
 - Se le preferenze non sono valide, ma non ci sono suggerimenti specifici, devi identificare autonomamente le discrepanze e correggerle basandoti sull'input originale. 
 
 ## Output Atteso:
-Un set di preferenze che riguardano **esclusivamente** i dipendenti segnalati come non validi, corrette secondo i suggerimenti forniti o secondo la tua analisi, e strutturate in un formato JSON/Dict coerente con l'output dell'agente di estrazione preferenze.
+Un set di preferenze che riguardano **esclusivamente** i dipendenti segnalati come non validi, corrette secondo i suggerimenti forniti o secondo la tua analisi, e strutturate in un formato JSON/Dict coerentes.
 """
 
 def correct_preferences_node(state: SchedulerForm):
@@ -20,7 +20,9 @@ def correct_preferences_node(state: SchedulerForm):
     testo_preferenze = state.input.strip()   
     vincoli_estratti = state.vincoli_soft if state.vincoli_soft else {}
     preferenze_valide = state.preferenze_valide
+    
     print([ s.dipendente_id for s in preferenze_valide.suggerimenti] if preferenze_valide and preferenze_valide.suggerimenti else "Nessun suggerimento specifico fornito." )
+    
     correzioni = preferenze_valide.__str__()
     preferenze_sbagliate: str = VincoliStrutturati(
         preferenze_dipendenti=[

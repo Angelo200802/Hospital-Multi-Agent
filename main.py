@@ -107,7 +107,7 @@ if __name__ == "__main__":
             input_iniziale = f.read()
 
         print("Avvio del processo con input: \n", input_iniziale)
-        piano = app.invoke({"input":input_iniziale})
+        piano = app.invoke({"input":input_iniziale, "max_iter": 5})
         print("Piano finale generato:\n", piano.get("piano_attuale"))
     else:
         raise ValueError("Il nome del file di input non è specificato nelle variabili d'ambiente")

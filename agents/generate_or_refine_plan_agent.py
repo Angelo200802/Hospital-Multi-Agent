@@ -1,4 +1,5 @@
-from input_type import SchedulerForm
+from input_type import SchedulerForm, Piano
+from llm import llm_call
 
 CALENDARIO = """
 Dicembre 2026
@@ -16,15 +17,35 @@ Gennaio 2027
 Giorni festivi: 8 Dicembre, 25 Dicembre, 26 Dicembre, 1 Gennaio, 6 Gennaio
 """
 
-PROMPT = """
+PROMPT_GENERATE = """
+
+"""
+
+PROMPT_REFINE = """
 
 """
 
 def generate_or_refine_plan_node(state: SchedulerForm) -> SchedulerForm:
     """
-    Fase 2 e Fase 4: Agente LLM che produce la bozza o la raffina tramite callback [2, 4].
+    Fase 2 e Fase 4: Agente LLM che produce la bozza o la raffina tramite callback.
     Se riceve errori hard, corregge il piano. 
     Se riceve un 'dipendente_piu_sfortunato', tenta di migliorare la sua situazione.
     """
     
-    return {"piano_attuale": {"assegnamenti": "dummy_data"}}
+    prompt_variables = { "calendario": CALENDARIO }
+    prompts = []
+
+    if state.retry:
+        piano : str = state.piano_attuale.__str__()
+        prompt_variables["piano_attuale"] = piano
+    else:
+        prompt_variables["vincoli_soft"] = state.vincoli_soft.__str__()
+
+    piano_attuale = llm_call(
+        prompts=prompts,
+        prompt_variables=prompt_variables,
+        structured_output=Piano,
+        temperature=0.7
+    )
+
+    return {"piano_attuale": piano_attuale.model_dump()}

@@ -1,4 +1,4 @@
-from typing import Dict, Optional
+from typing import Optional
 from typing import List, Optional, Union
 from pydantic import BaseModel, Field
 from enum import Enum
@@ -15,6 +15,12 @@ class TurnoReale(Enum):
     POMERIGGIO = "pomeriggio"
     NOTTE = "notte"
     TUTTI = "tutti" 
+
+class TurnoAssegnato(Enum):
+    M = "M"
+    P = "P"
+    N = "N"
+    R = "R"  # Riposo
 
 class GiornoSettimana(Enum):
     LUNEDI = "lunedì"
@@ -108,6 +114,21 @@ class PreferenzeValidate(BaseModel):
         ])
         return f"Suggerimenti:\n{suggerimenti_str}"
 
+class TurniDipendente(BaseModel):
+    id_dipendente: str = Field(..., description="L'identificativo del dipendente (es. 'A')")
+    turni_assegnati: List[TurnoAssegnato] = Field(default=[], description="Elenco dei turni assegnati al dipendente")
+
+class Piano(BaseModel):
+    
+    assegnamenti: List[TurniDipendente] = Field(default=[], description="Elenco degli assegnamenti dei turni per ogni dipendente")
+    
+    def __str__(self):
+        string = "Piano Attuale:\n"
+        for turni_dipendente in self.assegnamenti:
+            string += f"  - Dipendente {turni_dipendente.id_dipendente}:\n"
+            string += " ".join([t.value for t in turni_dipendente.turni_assegnati]) + "\n"
+        return string
+
 class SchedulerForm(BaseModel):
     # Input iniziale
     input: str
@@ -118,7 +139,8 @@ class SchedulerForm(BaseModel):
     preferenze_valide: PreferenzeValidate = None
 
     # Fase 2/4: Bozza del piano
-    piano_attuale: Optional[Dict] = None    
+    retry: bool = False
+    piano_attuale: Piano = None    
     
     # Fase 3a/4: Verifica vincoli Hard
     hard_constraints_valid: bool = None    
@@ -128,5 +150,7 @@ class SchedulerForm(BaseModel):
     dipendente_piu_sfortunato: str = None  
     fairness_score: float = None             
     
+    max_iter: int = 5
+
     # Criteri di terminazione
     terminazione_raggiunta: bool = None     
