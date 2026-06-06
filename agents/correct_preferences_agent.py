@@ -1,13 +1,5 @@
 from input_type import SchedulerForm, VincoliStrutturati
-from langchain_google_genai import ChatGoogleGenerativeAI
-from langchain_core.prompts import ChatPromptTemplate
-from dotenv import load_dotenv
-import os
-
-load_dotenv()
-
-GEMINI_API_KEY = os.getenv("GEMINI_API")
-GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.0-flash-lite")
+from llm import llm_call
 
 SYSTEM_PROMPT = f""" 
 ## Il tuo ruolo:
@@ -36,27 +28,24 @@ def correct_preferences_node(state: SchedulerForm):
             if pref in [s.dipendente_id for s in preferenze_valide.suggerimenti]]
     ).__str__()
 
-    llm = ChatGoogleGenerativeAI(
-        model=GEMINI_MODEL, 
-        google_api_key=GEMINI_API_KEY, 
-        temperature=0.5
-    )
-
-    llm = llm.with_structured_output(VincoliStrutturati)
-
-    prompt = ChatPromptTemplate.from_messages([
+    
+    prompt = [
         ("system", SYSTEM_PROMPT),
         ("user", """Ecco l'input originale con le preferenze espresse dai dipendenti:\n{testo_preferenze}\n\nAgente Verificatore[Output]:\nPreferenze Errate -> \n{preferenze_sbagliate}Correzioni -> \n{correzioni}""")
-    ])
+    ]
 
     print("Correzione preferenze in corso...")
-    risultato_correzione = prompt | llm
-    preferenze_corrette = risultato_correzione.invoke({
-        "testo_preferenze": testo_preferenze,
-        "preferenze_sbagliate": preferenze_sbagliate,
-        "correzioni": correzioni
-    })
-
+    
+    preferenze_corrette = llm_call(
+        prompts=prompt,
+        prompt_variables={
+            "testo_preferenze": testo_preferenze,
+            "preferenze_sbagliate": preferenze_sbagliate,
+            "correzioni": correzioni
+        },
+        structured_output=VincoliStrutturati,
+        temperature=0.5
+    )
     print("Correzione completata.")
 
     print("Preferenze corrette (strutturate):\n", preferenze_corrette.__str__())

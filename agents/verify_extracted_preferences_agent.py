@@ -1,12 +1,5 @@
-from input_type import SchedulerForm, PreferenzeValidate, VincoliStrutturati
-from langchain_google_genai import ChatGoogleGenerativeAI
-from langchain_core.prompts import ChatPromptTemplate
-from dotenv import load_dotenv
-import os
-
-load_dotenv()
-GEMINI_API_KEY = os.getenv("GEMINI_API")
-GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.0-flash-lite")
+from input_type import SchedulerForm,PreferenzeValidate, VincoliStrutturati
+from llm import llm_call
 
 campi_vincoli = "\n".join([f"  - {nome}: {desc}" for nome, desc in VincoliStrutturati.model_fields.items()])
 
@@ -46,30 +39,27 @@ L'output deve seguire rigorosamente lo schema strutturato richiesto, che prevede
 def verify_extracted_preferences_node(state: SchedulerForm):
 
     testo_preferenze = state.input.strip()   
-    vincoli_estratti = state.vincoli_soft.__str__() if state.vincoli_soft else "{}"
+    vincoli_estratti = state.vincoli_soft.__str__() if state.vincoli_soft else "Nessun vincolo estratto"
 
-    llm = ChatGoogleGenerativeAI(
-        model=GEMINI_MODEL, 
-        google_api_key=GEMINI_API_KEY, 
-        temperature=0.5
-    )
-
-    llm = llm.with_structured_output(PreferenzeValidate)
-
-    prompt = ChatPromptTemplate.from_messages([
+    prompts = [
         ("system", SYSTEM_PROMPT),
         ("user", """Ecco l'input originale con le preferenze espresse dai dipendenti:\n{testo_preferenze}\n\nEcco le preferenze estratte dal tuo collega:\n{vincoli_estratti}""")
-    ])
+    ]
     
     print("Verifica preferenze in corso...")
-    risultato_verifica = prompt | llm
     
-    verifica = risultato_verifica.invoke({
-        "campi_vincoli_strutturati": campi_vincoli,
-        "testo_preferenze": testo_preferenze,
-        "vincoli_estratti": vincoli_estratti
-    })
+    risultato_verifica = llm_call(
+        prompts=prompts,
+        prompt_variables={
+            "campi_vincoli_strutturati": campi_vincoli,
+            "testo_preferenze": testo_preferenze,
+            "vincoli_estratti": vincoli_estratti
+        },
+        structured_output=PreferenzeValidate,
+        temperature=0.5
+    )
+    
 
     print("Verifica completata.")
 
-    return {"preferenze_valide": verifica.model_dump()}
+    return {"preferenze_valide": risultato_verifica.model_dump()}

@@ -1,13 +1,5 @@
 from input_type import SchedulerForm, VincoliStrutturati
-from langchain_core.prompts import ChatPromptTemplate
-from langchain_google_genai import ChatGoogleGenerativeAI
-from dotenv import load_dotenv
-import os
-
-
-load_dotenv()
-GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2b")
-GEMINI_API = os.getenv("GEMINI_API")
+from llm import llm_call
 
 SYSTEM_PROMPT = """
 ## Il tuo ruolo:
@@ -102,27 +94,23 @@ def extract_preferences_node(state: SchedulerForm) -> SchedulerForm:
     """
     
     testo_preferenze = state.input.strip()
-  
-    llm = ChatGoogleGenerativeAI(
-        model=GEMINI_MODEL, 
-        google_api_key=GEMINI_API, 
-        temperature=0.5
-    )
-    llm_strutturato = llm.with_structured_output(VincoliStrutturati)
     
-    prompt = ChatPromptTemplate.from_messages([
+    prompts = [
         ("system", SYSTEM_PROMPT),
         ("user", """Ecco le preferenze espresse dai dipendenti:\n{preferenze_testuali}""")
-    ])
+    ]
     
     print("Estrazione preferenze in corso...")
     
-    chain = prompt | llm_strutturato
-    risultato_estrazione = chain.invoke({
-        "preferenze_testuali": testo_preferenze
-    })
+    risultato_estrazione = llm_call(
+        prompts=prompts,
+        prompt_variables={"preferenze_testuali": testo_preferenze},
+        temperature=0.5,
+        structured_output=VincoliStrutturati
+    )
     
     print("Preferenze estratte (strutturate):\n", risultato_estrazione.__str__())
+    
     vincoli_dict = risultato_estrazione.model_dump()
     
     print("Estrazione completata.")
