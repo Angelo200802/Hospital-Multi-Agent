@@ -5,7 +5,10 @@ from input_type import SchedulerForm, Piano
 NUM_DAYS = 31       # 7 Dicembre - 7 Gennaio
 NUM_SHIFTS = 3      # 0=Mattina, 1=Pomeriggio, 2=Notte
 
-def create_hard_constraints(std_nurses: list, spec_nurses: list) -> Tuple[cp_model.CpModel, Dict]:
+def create_hard_constraints(
+        std_nurses: list, 
+        spec_nurses: list
+) -> Tuple[cp_model.CpModel, Dict]:
     """
     Agente simbolico OR-Tools. Riceve il piano generato dall'LLM e 
     verifica rigorosamente i vincoli hard sui dipendenti.
@@ -81,13 +84,20 @@ def create_hard_constraints(std_nurses: list, spec_nurses: list) -> Tuple[cp_mod
 
     return model,shifts
 
-def assign_shifts_from_llm(model: cp_model.CpModel, shifts: Dict, piano_llm: Piano,nurses: list[str]) -> cp_model.CpModel:
+def assign_shifts_from_llm(
+        model: cp_model.CpModel, 
+        shifts: Dict, 
+        piano_llm: Piano,
+        nurses: list[str]
+) -> Tuple[cp_model.CpModel,Dict]:
     
     shift_map = {
         "M": 0,  # Mattina
         "P": 1,  # Pomeriggio
         "N": 2,  # Notte
     }
+
+    assunzioni_piano = {}
 
     if piano_llm:
         for n in nurses:
@@ -97,21 +107,28 @@ def assign_shifts_from_llm(model: cp_model.CpModel, shifts: Dict, piano_llm: Pia
             
             for d in range(NUM_DAYS):
                 turno_llm = turni_assegnati[d]
+                
+                nome_assunzione = f'assumi_piano_n{n}_d{d}_turno_{turno_llm}'
+                bool_assunzione = model.NewBoolVar(nome_assunzione)
+
+                info_vincolo = f"Dipendente {n}, Giorno {d+1}: Turno assegnato '{turno_llm}'"
+                assunzioni_piano[bool_assunzione] = info_vincolo
+                
                 if turno_llm in shift_map:
                     s_assegnato = shift_map[turno_llm]
                     for s in range(NUM_SHIFTS):
                         if s == s_assegnato:
-                            model.Add(shifts[(n, d, s)] == 1)
+                            model.Add(shifts[(n, d, s)] == 1).OnlyEnforceIf(bool_assunzione)
                         else:
-                            model.Add(shifts[(n, d, s)] == 0)
+                            model.Add(shifts[(n, d, s)] == 0).OnlyEnforceIf(bool_assunzione)
                 else:
                     # Se ha il giorno di riposo ('R'), tutte le variabili di quel giorno valgono 0
                     for s in range(NUM_SHIFTS):
-                        model.Add(shifts[(n, d, s)] == 0)
+                        model.Add(shifts[(n, d, s)] == 0).OnlyEnforceIf(bool_assunzione)
     
-    return model
+    return model, assunzioni_piano
 
-def solve_hard_constraints(state: SchedulerForm) -> bool:
+def solve_hard_constraints(state: SchedulerForm) -> Dict[str, Any]:
     """
     Risolve il modello di OR-Tools e restituisce True se esiste una soluzione che soddisfa tutti i vincoli hard, altrimenti False.
     """
@@ -125,9 +142,47 @@ def solve_hard_constraints(state: SchedulerForm) -> bool:
     
     model, shifts = create_hard_constraints(std_nurses, spec_nurses)
     
-    assigned_model = assign_shifts_from_llm(model, shifts, piano_llm,nurses)
+    assigned_model, mappa_assunzioni = assign_shifts_from_llm(model, shifts, piano_llm,nurses)
+
+    lista_letterali_assunzioni = list(mappa_assunzioni.keys())
+    model.AddAssumptions(lista_letterali_assunzioni)
 
     solver = cp_model.CpSolver()
     status = solver.Solve(assigned_model)
 
     print(f"Status: {status}")
+
+    vincoli_non_soddisfatti = []
+
+    if status == cp_model.INFEASIBLE:
+        print("Il piano generato dall'agente viola i vincoli")
+        
+        indici_core_colpevoli = solver.SufficientAssumptionsForInfeasibility()
+        
+        for index in indici_core_colpevoli:
+            
+            var_proto = model.Proto().variables[index]
+            nome_var = var_proto.name
+            
+            for bool_var, descrizione in mappa_assunzioni.items():
+                if bool_var.Name() == nome_var:
+                    vincoli_non_soddisfatti.append(descrizione)
+                    break
+                    
+        return {
+            "retry" : True,
+            "hard_constraints_valid" : False, 
+            "feedback_errori_hard" : "/n".join(vincoli_non_soddisfatti)}
+
+    elif status == cp_model.OPTIMAL or status == cp_model.FEASIBLE:
+        print("Il piano generato rispetta perfettamente tutti i vincoli hard.")
+        return {
+            "hard_constraints_valid" : True
+        }
+        
+    else:
+        print("Stato del risolvitore sconosciuto o tempo scaduto.")
+        return {
+            "hard_constraints_valid" : False,
+            "feedback_errori_hard" : "Impossibile determinare la validità del piano (Errore generico del risolvitore)."
+        }

@@ -7,9 +7,9 @@ def verify_hard_constraints_node(state: SchedulerForm) -> SchedulerForm:
     Controlla che nessuno faccia 2 turni consecutivi, limiti di ore, riposi, ecc.
     """
     
-    solve_hard_constraints(state)
+    return solve_hard_constraints(state)
 
-    return {"hard_constraints_valid": True, "feedback_errori_hard": ""}
+ 
 
 
 def evaluate_fairness_node(state: SchedulerForm) -> SchedulerForm:

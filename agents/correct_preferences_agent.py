@@ -1,5 +1,6 @@
 from input_type import SchedulerForm, VincoliStrutturati
 from llm import llm_call
+from halo import Halo
 
 SYSTEM_PROMPT = f""" 
 ## Il tuo ruolo:
@@ -21,7 +22,7 @@ def correct_preferences_node(state: SchedulerForm):
     vincoli_estratti = state.vincoli_soft if state.vincoli_soft else {}
     preferenze_valide = state.preferenze_valide
     
-    print([ s.dipendente_id for s in preferenze_valide.suggerimenti] if preferenze_valide and preferenze_valide.suggerimenti else "Nessun suggerimento specifico fornito." )
+    print("Preferenze non valide per i seguenti dipendenti: ",[ s.dipendente_id for s in preferenze_valide.suggerimenti] if preferenze_valide and preferenze_valide.suggerimenti else "Nessun suggerimento specifico fornito." )
     
     correzioni = preferenze_valide.__str__()
     preferenze_sbagliate: str = VincoliStrutturati(
@@ -36,7 +37,12 @@ def correct_preferences_node(state: SchedulerForm):
         ("user", """Ecco l'input originale con le preferenze espresse dai dipendenti:\n{testo_preferenze}\n\nAgente Verificatore[Output]:\nPreferenze Errate -> \n{preferenze_sbagliate}Correzioni -> \n{correzioni}""")
     ]
 
-    print("Correzione preferenze in corso...")
+    spinner = Halo(
+        text='Correzione delle preferenze in corso',
+        spinner='line',
+        color='cyan'
+    )
+    spinner.start()
     
     preferenze_corrette = llm_call(
         prompts=prompt,
@@ -48,9 +54,7 @@ def correct_preferences_node(state: SchedulerForm):
         structured_output=VincoliStrutturati,
         temperature=0.5
     )
-    print("Correzione completata.")
-
-    print("Preferenze corrette (strutturate):\n", preferenze_corrette.__str__())
+    spinner.succeed("Correzione delle preferenze completata.")
 
     id_corretti = [p.id_dipendente for p in preferenze_corrette.preferenze_dipendenti]
     
@@ -75,6 +79,5 @@ def correct_preferences_node(state: SchedulerForm):
     # 5. Creiamo il container finale con la lista perfettamente pulita
     nuove_preferenze = VincoliStrutturati(preferenze_dipendenti=nuovi_vincoli)
     
-    print("Lista finale dipendenti salvati:", [s.id_dipendente for s in nuove_preferenze.preferenze_dipendenti])
     
     return {"vincoli_soft": nuove_preferenze.model_dump()}

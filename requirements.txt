@@ -5,3 +5,4 @@ langchain-google-genai
 dotenv
 pandas
 google-cloud-aiplatform[tokenization]
+halo

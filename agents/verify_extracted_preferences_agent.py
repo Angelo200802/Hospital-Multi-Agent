@@ -1,5 +1,6 @@
 from input_type import SchedulerForm,PreferenzeValidate, VincoliStrutturati
 from llm import llm_call
+from halo import Halo
 
 campi_vincoli = "\n".join([f"  - {nome}: {desc}" for nome, desc in VincoliStrutturati.model_fields.items()])
 
@@ -46,8 +47,13 @@ def verify_extracted_preferences_node(state: SchedulerForm):
         ("user", """Ecco l'input originale con le preferenze espresse dai dipendenti:\n{testo_preferenze}\n\nEcco le preferenze estratte dal tuo collega:\n{vincoli_estratti}""")
     ]
     
-    print("Verifica preferenze in corso...")
-    
+    spinner = Halo(
+        text='Verifica delle preferenze in corso',
+        spinner='line',
+        color='cyan'
+    )
+    spinner.start()
+
     risultato_verifica = llm_call(
         prompts=prompts,
         prompt_variables={
@@ -60,6 +66,6 @@ def verify_extracted_preferences_node(state: SchedulerForm):
     )
     
 
-    print("Verifica completata.")
+    spinner.succeed("Verifica delle preferenze completata.")
 
     return {"preferenze_valide": risultato_verifica.model_dump()}

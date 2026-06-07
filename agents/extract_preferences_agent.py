@@ -1,5 +1,6 @@
 from input_type import SchedulerForm, VincoliStrutturati
 from llm import llm_call
+from halo import Halo
 
 SYSTEM_PROMPT = """
 ## Il tuo ruolo:
@@ -100,7 +101,12 @@ def extract_preferences_node(state: SchedulerForm) -> SchedulerForm:
         ("user", """Ecco le preferenze espresse dai dipendenti:\n{preferenze_testuali}""")
     ]
     
-    print("Estrazione preferenze in corso...")
+    spinner = Halo(
+        text='Estrazione delle preferenze in corso',
+        spinner='line',
+        color='cyan'
+    )
+    spinner.start()
     
     risultato_estrazione = llm_call(
         prompts=prompts,
@@ -109,10 +115,8 @@ def extract_preferences_node(state: SchedulerForm) -> SchedulerForm:
         structured_output=VincoliStrutturati
     )
     
-    print("Preferenze estratte (strutturate):\n", risultato_estrazione.__str__())
-    
     vincoli_dict = risultato_estrazione.model_dump()
     
-    print("Estrazione completata.")
+    spinner.succeed("Estrazione delle preferenze completata.")
 
     return {"vincoli_soft": vincoli_dict}

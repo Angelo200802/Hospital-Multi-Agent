@@ -1,5 +1,6 @@
 from input_type import SchedulerForm, Piano
 from llm import llm_call
+from halo import Halo
 
 CALENDARIO = """
 ## Calendario da Seguire per la Pianificazione dei Turni:
@@ -40,13 +41,21 @@ Restituisci il piano nel formato strutturato indicato.
 
 PROMPT_REFINE = """
 ## Cosa Devi Fare:
-Devi raffinare il piano di turni esistente in base al feedback ricevuto.
+Devi raffinare il piano di turni esistente in base al feedback ricevuto dagli altri agenti.
+- Se ricevi feedback sui vincoli hard violati, devi correggere il piano per rispettare quei vincoli.
+- Se ricevi informazioni sul dipendente più sfortunato e il suo fairness score, devi cercare di migliorare la sua situazione nel piano, ad esempio assegnandogli più turni desiderati o riducendo i turni meno desiderati, sempre nel rispetto dei vincoli hard.
 
 {hard_constraints}
 
+## Il tuo Input:
+- Feedback sui vincoli hard violati forniti dall'Agente di Verifica Vincoli Hard (se presenti).
+- Informazioni sul dipendente più sfortunato e il suo fairness score fornite dall'Agente di Valutazione Fairness (se presenti).
+- Il piano attuale generato nella precedente iterazione.
+
 ## Il tuo Output:
 Devi restituire un nuovo piano di turni che tenga conto del feedback ricevuto sui vincoli hard violati oppure che migliori la situazione del dipendente più sfortunato.
-
+Per ogni dipendente devi dunque creare una nuova lista di 31 turni (es. Dipendente A -> ['M', 'R', 'N', ...]) che rappresentano i turni assegnati per ogni giorno del mese, dove 'M' = Mattina, 'P' = Pomeriggio, 'N' = Notte, 'R' = Riposo.
+Restituisci il piano nel formato strutturato indicato.
 """
 
 HARD_CONSTRAINTS = """
@@ -75,15 +84,36 @@ def generate_or_refine_plan_node(state: SchedulerForm) -> SchedulerForm:
     prompts = []
 
     if state.retry:
-        
+        spinner = Halo(
+            text='Raffinamento del piano in corso',
+            spinner='line',
+            color='cyan'
+        )
+        spinner.start()
+
         prompts.append(("system", SYSTEM_PROMPT +"\n"+ PROMPT_REFINE))
-        prompt_variables["feedback_errori_hard"] = state.feedback_errori_hard
-        prompt_variables["dipendente_piu_sfortunato"] = state.dipendente_piu_sfortunato
-        prompt_variables["fairness_score"] = state.fairness_score
+        user_input = "Piano da Raffinare:\n{piano_attuale}\n"
         
+        if not state.hard_constraints_valid:
+            prompt_variables["feedback_errori_hard"] = state.feedback_errori_hard
+            user_input += "Agente Verifica Vincoli Hard Violati [Output]:\n{feedback_errori_hard}\n"
+        
+        if state.dipendente_piu_sfortunato:
+            prompt_variables["dipendente_piu_sfortunato"] = state.dipendente_piu_sfortunato
+            user_input += "Agente Valutazione Fairness [Output]:\nDipendente più sfortunato: {dipendente_piu_sfortunato}\n"
+        
+        user_input += "Calendario da seguire: {calendario}\nAgente Estrattore Preferenze [Output]: {vincoli_soft}"
         piano : str = state.piano_attuale.__str__()
         prompt_variables["piano_attuale"] = piano
+
+        prompts.append(("user", user_input))
     else:
+        spinner = Halo(
+            text='Generazione del piano in corso',
+            spinner='line',
+            color='cyan'
+        )        
+        spinner.start()
         prompts.append(("system", SYSTEM_PROMPT +"\n"+ PROMPT_GENERATE))
         prompts.append(("user", "Calendario da seguire: {calendario}\nAgente Estrattore Preferenze [Output]: {vincoli_soft}"))
         prompt_variables["vincoli_soft"] = state.vincoli_soft.__str__()
@@ -94,5 +124,7 @@ def generate_or_refine_plan_node(state: SchedulerForm) -> SchedulerForm:
         structured_output=Piano,
         temperature=0.7
     )
+
+    spinner.succeed(f"Fine {'generazione' if not state.retry else 'raffinamento'} del piano.")
 
     return {"piano_attuale": piano_attuale.model_dump()}
