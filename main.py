@@ -21,8 +21,13 @@ def route_after_hard_check(state: SchedulerForm) -> str:
     Se violati -> Torna all'LLM per rifare il piano.
     Se rispettati -> Passa al calcolo della fairness.
     """
-    if not state.hard_constraints_valid and not state.dipendente_piu_sfortunato:
+    if not state.hard_constraints_valid and not state.best_plan:
         return "generate_or_refine_plan_node"
+    if not state.hard_constraints_valid and state.best_plan:
+        return "output_finale_node"
+    
+    if not state.best_plan:
+        state.best_plan = state.piano_attuale
     return "evaluate_fairness_node"
 
 def route_after_fairness_check(state: SchedulerForm) -> str:
@@ -81,7 +86,8 @@ def build_workflow():
         route_after_hard_check,
         {
             "generate_or_refine_plan_node": "generate_or_refine_plan_node",
-            "evaluate_fairness_node": "evaluate_fairness_node"
+            "evaluate_fairness_node": "evaluate_fairness_node",
+            "output_finale_node": "output_finale_node"
         }
     )
 

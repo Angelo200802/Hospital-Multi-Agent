@@ -140,6 +140,7 @@ class SchedulerForm(BaseModel):
 
     # Fase 2/4: Bozza del piano
     retry: bool = False
+    best_plan: Piano = None
     piano_attuale: Piano = None    
     
     # Fase 3a/4: Verifica vincoli Hard
