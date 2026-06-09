@@ -1,6 +1,7 @@
 from input_type import SchedulerForm, GiornoSettimana
 from csp import solve_hard_constraints
 from datetime import date, timedelta
+from halo import Halo
 
 def get_data_string(d: int) -> str:
     """
@@ -18,11 +19,29 @@ def verify_hard_constraints_node(state: SchedulerForm) -> SchedulerForm:
     Controlla che nessuno faccia 2 turni consecutivi, limiti di ore, riposi, ecc.
     """
     
-    return solve_hard_constraints(state)
+    spinner = Halo(
+        text='Verifica dei vincoli hard in corso',
+        spinner='line',
+        color='cyan'
+    )
+    spinner.start()
+    
+    sol = solve_hard_constraints(state)
+
+    spinner.succeed("Fine verifica dei vincoli hard.")
+    spinner.stop()
+
+    return sol
 
 
 def evaluate_fairness_node(state: SchedulerForm) -> SchedulerForm:
     
+    spinner = Halo(
+        text='Valutazione della fairness in corso',
+        spinner='line',
+        color='cyan'
+    )
+    spinner.start()
     punteggi = {}
     giorni = [giorno.value for giorno in GiornoSettimana]
     turni_map = {'M': 'mattina', 'P': 'pomeriggio', 'N': 'notte'}
@@ -101,8 +120,24 @@ def evaluate_fairness_node(state: SchedulerForm) -> SchedulerForm:
     lavoratore_piu_sfortunato = max(punteggi, key=punteggi.get)
     peggior_punteggio = punteggi[lavoratore_piu_sfortunato]
 
-    print(f"\n--- VALUTAZIONE FAIRNESS ---")
-    for lavoratore, score in punteggi.items():
-        print(f"Dipendente {lavoratore}: Scontentezza = {score}")
+    spinner.succeed("Fine valutazione della fairness.")
+    spinner.stop()
+
+    if not state.dipendente_piu_sfortunato:
+        return {
+            "fairness_score": peggior_punteggio,
+            "dipendente_piu_sfortunato": lavoratore_piu_sfortunato,
+            "retry" : True ,
+            "terminazione_raggiunta": False    
+        }
     
-    print(f"\nIl dipendente più sfortunato è il '{lavoratore_piu_sfortunato}' con penalità {peggior_punteggio}.")
+    if peggior_punteggio < state.fairness_score:
+        return {
+            "best_plan": state.piano_attuale,
+            "fairness_score": peggior_punteggio,
+            "dipendente_piu_sfortunato": lavoratore_piu_sfortunato,
+            "retry" : False,
+            "terminazione_raggiunta": True
+        }
+    
+    

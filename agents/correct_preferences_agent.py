@@ -55,7 +55,8 @@ def correct_preferences_node(state: SchedulerForm):
         temperature=0.5
     )
     spinner.succeed("Correzione delle preferenze completata.")
-
+    spinner.stop()  
+    
     id_corretti = [p.id_dipendente for p in preferenze_corrette.preferenze_dipendenti]
     
     # 2. Inizializziamo la lista finale inserendo DIRETTAMENTE tutti i nuovi vincoli corretti

@@ -3,6 +3,7 @@ from llm import llm_call
 from halo import Halo
 
 CALENDARIO = """
+
 ## Calendario da Seguire per la Pianificazione dei Turni:
 
 Dicembre 2026
@@ -122,9 +123,10 @@ def generate_or_refine_plan_node(state: SchedulerForm) -> SchedulerForm:
         prompts=prompts,
         prompt_variables=prompt_variables,
         structured_output=Piano,
-        temperature=0.7
+        temperature=0.6
     )
 
     spinner.succeed(f"Fine {'generazione' if not state.retry else 'raffinamento'} del piano.")
+    spinner.stop()
 
     return {"piano_attuale": piano_attuale.model_dump()}

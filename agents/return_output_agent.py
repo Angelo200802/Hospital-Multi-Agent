@@ -1,5 +1,6 @@
 from input_type import SchedulerForm, TurnoAssegnato
 from datetime import date, timedelta
+from halo import Halo
 import pandas as pd
 import os, time
 
@@ -8,6 +9,13 @@ def return_output_node(state: SchedulerForm) -> SchedulerForm:
     """
     Nodo finale che restituisce il piano definitivo in un formato leggibile.
     """
+
+    spinner = Halo(
+        text='Preparazione del piano finale in corso',
+        spinner='line',
+        color='cyan'
+    )
+    spinner.start()
     piano = state.best_plan
 
     map_turni = {
@@ -46,3 +54,6 @@ def return_output_node(state: SchedulerForm) -> SchedulerForm:
         df.to_excel(f"{os.getcwd()}/output/piano_di_turni_{time.time()}.xlsx", index_label="Fascia Oraria")
     except ImportError:
         print("Errore: assicurati di aver installato la libreria 'openpyxl' (pip install openpyxl pandas) per esportare in Excel.")
+
+    spinner.succeed("Piano finale preparato e salvato in output.")
+    spinner.stop()

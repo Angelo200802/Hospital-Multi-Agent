@@ -119,7 +119,8 @@ if __name__ == "__main__":
         with open(path, "r") as f:
             input_iniziale = f.read()
         spinner.succeed("File di input caricato correttamente.")
-
+        spinner.stop()
+        
         print("Inizio del processo di generazione del piano...")
         piano = app.invoke({"input":input_iniziale})
         print("Piano finale generato:\n", piano.get("piano_attuale"))

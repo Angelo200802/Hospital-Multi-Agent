@@ -67,5 +67,6 @@ def verify_extracted_preferences_node(state: SchedulerForm):
     
 
     spinner.succeed("Verifica delle preferenze completata.")
+    spinner.stop()
 
     return {"preferenze_valide": risultato_verifica.model_dump()}

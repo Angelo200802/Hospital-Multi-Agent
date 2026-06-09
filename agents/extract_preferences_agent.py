@@ -118,5 +118,6 @@ def extract_preferences_node(state: SchedulerForm) -> SchedulerForm:
     vincoli_dict = risultato_estrazione.model_dump()
     
     spinner.succeed("Estrazione delle preferenze completata.")
+    spinner.stop()
 
     return {"vincoli_soft": vincoli_dict}
