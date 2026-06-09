@@ -21,7 +21,7 @@ def route_after_hard_check(state: SchedulerForm) -> str:
     Se violati -> Torna all'LLM per rifare il piano.
     Se rispettati -> Passa al calcolo della fairness.
     """
-    if not state.hard_constraints_valid:
+    if not state.hard_constraints_valid and not state.dipendente_piu_sfortunato:
         return "generate_or_refine_plan_node"
     return "evaluate_fairness_node"
 
@@ -115,7 +115,7 @@ if __name__ == "__main__":
         spinner.succeed("File di input caricato correttamente.")
 
         print("Inizio del processo di generazione del piano...")
-        piano = app.invoke({"input":input_iniziale, "max_iter": 5})
+        piano = app.invoke({"input":input_iniziale})
         print("Piano finale generato:\n", piano.get("piano_attuale"))
     else:
         raise ValueError("Il nome del file di input non è specificato nelle variabili d'ambiente")

@@ -149,8 +149,6 @@ class SchedulerForm(BaseModel):
     # Fase 3b/4: Valutazione Fairness
     dipendente_piu_sfortunato: str = None  
     fairness_score: float = None             
-    
-    max_iter: int = 5
 
     # Criteri di terminazione
     terminazione_raggiunta: bool = None     

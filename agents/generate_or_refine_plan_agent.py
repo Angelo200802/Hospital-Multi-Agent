@@ -79,7 +79,8 @@ def generate_or_refine_plan_node(state: SchedulerForm) -> SchedulerForm:
     """
     
     prompt_variables = { "calendario": CALENDARIO , 
-                        "hard_constraints": HARD_CONSTRAINTS 
+                        "hard_constraints": HARD_CONSTRAINTS,
+                        "vincoli_soft": state.vincoli_soft.__str__()  
                     }
     prompts = []
 
@@ -116,8 +117,7 @@ def generate_or_refine_plan_node(state: SchedulerForm) -> SchedulerForm:
         spinner.start()
         prompts.append(("system", SYSTEM_PROMPT +"\n"+ PROMPT_GENERATE))
         prompts.append(("user", "Calendario da seguire: {calendario}\nAgente Estrattore Preferenze [Output]: {vincoli_soft}"))
-        prompt_variables["vincoli_soft"] = state.vincoli_soft.__str__()
-
+        
     piano_attuale = llm_call(
         prompts=prompts,
         prompt_variables=prompt_variables,

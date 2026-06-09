@@ -38,7 +38,7 @@ def llm_call(prompts: List[Tuple[str, str]],
 
     for i, api_key in enumerate(GEMINI_API_POOL):
         try:
-            print(f"🔄 Tentativo di chiamata LLM con la chiave {i+1}/{len(GEMINI_API_POOL)}...")
+            #print(f"🔄 Tentativo di chiamata LLM con la chiave {i+1}/{len(GEMINI_API_POOL)}...")
             
             llm = create_llm(
                 api_key=api_key, 
@@ -59,6 +59,6 @@ def llm_call(prompts: List[Tuple[str, str]],
         temperature=temperature, 
         structured_output=structured_output
     )
-    print("🔄 Tutte le chiavi di test fallite. Utilizzo la chiave di produzione.")
+    #print("🔄 Tutte le chiavi di test fallite. Utilizzo la chiave di produzione.")
     chain = prompts_template | llm
     return chain.invoke(inputs)
