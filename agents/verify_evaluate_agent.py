@@ -1,5 +1,16 @@
 from input_type import SchedulerForm, GiornoSettimana
 from csp import solve_hard_constraints
+from datetime import date, timedelta
+
+def get_data_string(d: int) -> str:
+    """
+    Converte l'indice del giorno (0-30) nella stringa data corrispondente,
+    basandosi sull'orizzonte temporale del progetto (7 Dic 2026 - 6 Gen 2027).
+    """
+    data_inizio = date(2026, 12, 7)
+    data_corrente = data_inizio + timedelta(days=d)
+    return data_corrente.strftime("%Y-%m-%d")
+
 
 def verify_hard_constraints_node(state: SchedulerForm) -> SchedulerForm:
     """
@@ -8,8 +19,6 @@ def verify_hard_constraints_node(state: SchedulerForm) -> SchedulerForm:
     """
     
     return solve_hard_constraints(state)
-
- 
 
 
 def evaluate_fairness_node(state: SchedulerForm) -> SchedulerForm:
@@ -49,33 +58,38 @@ def evaluate_fairness_node(state: SchedulerForm) -> SchedulerForm:
             giorno_settimana = giorni[d % 7]
             is_weekend = giorno_settimana in ["sabato", "domenica"]
             
-            # --- GERARCHIA: Le richieste specifiche battono le preferenze generali ---
-            # Verifichiamo se in questo giorno (d) c'era una richiesta specifica (es. voleva fare la mattina)
-            # Nota: qui dovresti mappare 'd' (0-30) alla stringa data 'YYYY-MM-DD' per fare il match esatto.
+            data_str = get_data_string(d)
             richiesta_match = False 
-            # Esempio logico (assumendo che tu abbia una funzione get_data_string(d)):
-            # data_str = get_data_string(d)
-            # for req in dipendente.richieste_specifiche:
-            #     if req.data == data_str and req.desiderato == True and cat_map[turno] in req.turno:
-            #         richiesta_match = True 
             
-            # Se è una richiesta specifica esaudita, non calcoliamo penalità per questo giorno
+            for req in dipendente.richieste_specifiche:
+                if req.data != data_str:
+                    continue
+
+                turni_richiesti = [t.value if hasattr(t, 'value') else t for t in req.turno]
+                turno_assegnato_match = (turni_map[turni] in turni_richiesti) or ("tutti" in turni_richiesti)
+
+                if req.desiderato == False and turno_assegnato_match:
+                    penalita += 15
+
+                elif req.desiderato == True:
+                    if turno_assegnato_match:
+                        penalita -= 2
+                        richiesta_match = True
+                    else:
+                        penalita += 5 
+            
             if richiesta_match:
-                penalita -= 2
                 continue
             
             if turni_map[turni] in turni_no:
                 penalita += 10
                 
-            # Aggiunta penalità per giorno della settimana sgradito (es. odia il venerdì)
             if giorno_settimana in giorni_no:
                 penalita += 10
                 
-            # Aggiunta penalità per weekend (se esplicitamente sgradito nella CategoriaTurno)
             if is_weekend and "weekend" in turni_no:
                 penalita += 15
                 
-            # 3. CONTROLLO TURNI CONSECUTIVI SGRADITI (es. non vuole fare turni di notte consecutivi) [7, 9]
             if d > 0 and turni_assegnati[d-1] != 'R':
                 turno_ieri = turni_assegnati[d-1]
                 if turni_map[turni] in [t.value for t in dipendente.tolleranza_turni_consecutivi] and turni_map[turni] == turni_map[turno_ieri]:
