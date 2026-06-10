@@ -1,6 +1,5 @@
 from input_type import SchedulerForm, VincoliStrutturati
 from llm import llm_call
-from halo import Halo
 
 SYSTEM_PROMPT = f""" 
 ## Il tuo ruolo:
@@ -37,12 +36,7 @@ def correct_preferences_node(state: SchedulerForm):
         ("user", """Ecco l'input originale con le preferenze espresse dai dipendenti:\n{testo_preferenze}\n\nAgente Verificatore[Output]:\nPreferenze Errate -> \n{preferenze_sbagliate}Correzioni -> \n{correzioni}""")
     ]
 
-    spinner = Halo(
-        text='Correzione delle preferenze in corso',
-        spinner='line',
-        color='cyan'
-    )
-    spinner.start()
+    print("Correzione delle preferenze in corso...")
     
     preferenze_corrette = llm_call(
         prompts=prompt,
@@ -54,8 +48,7 @@ def correct_preferences_node(state: SchedulerForm):
         structured_output=VincoliStrutturati,
         temperature=0.5
     )
-    spinner.succeed("Correzione delle preferenze completata.")
-    spinner.stop()  
+    print("Correzione delle preferenze completata.")
     
     id_corretti = [p.id_dipendente for p in preferenze_corrette.preferenze_dipendenti]
     

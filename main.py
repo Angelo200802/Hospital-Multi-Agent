@@ -7,7 +7,6 @@ from agents.generate_or_refine_plan_agent import generate_or_refine_plan_node
 from agents.verify_evaluate_agent import verify_hard_constraints_node, evaluate_fairness_node
 from agents.return_output_agent import return_output_node
 from dotenv import load_dotenv
-from halo import Halo
 import os, langchain
 
 langchain.debug = True
@@ -110,16 +109,10 @@ if __name__ == "__main__":
     if INPUT_FILE_NAME:
         path = f"{os.getcwd()}/input/{INPUT_FILE_NAME}"
         
-        spinner = Halo(
-            text='Caricamento del file di input',
-            spinner='line',
-            color='cyan'
-        )
-        spinner.start()
+        print("Caricamento del file di input...")
         with open(path, "r") as f:
             input_iniziale = f.read()
-        spinner.succeed("File di input caricato correttamente.")
-        spinner.stop()
+        print("File di input caricato correttamente.")
         
         print("Inizio del processo di generazione del piano...")
         piano = app.invoke({"input":input_iniziale})

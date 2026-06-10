@@ -1,7 +1,6 @@
 from input_type import SchedulerForm, GiornoSettimana
 from csp import solve_hard_constraints
 from datetime import date, timedelta
-from halo import Halo
 
 def get_data_string(d: int) -> str:
     """
@@ -19,29 +18,20 @@ def verify_hard_constraints_node(state: SchedulerForm) -> SchedulerForm:
     Controlla che nessuno faccia 2 turni consecutivi, limiti di ore, riposi, ecc.
     """
     
-    spinner = Halo(
-        text='Verifica dei vincoli hard in corso',
-        spinner='line',
-        color='cyan'
-    )
-    spinner.start()
+    print('Verifica dei vincoli hard in corso')
+        
     
     sol = solve_hard_constraints(state)
 
-    spinner.succeed("Fine verifica dei vincoli hard.")
-    spinner.stop()
+    print("Fine verifica dei vincoli hard.")
 
     return sol
 
 
 def evaluate_fairness_node(state: SchedulerForm) -> SchedulerForm:
     
-    spinner = Halo(
-        text='Valutazione della fairness in corso',
-        spinner='line',
-        color='cyan'
-    )
-    spinner.start()
+    print('Valutazione della fairness in corso')
+    
     punteggi = {}
     giorni = [giorno.value for giorno in GiornoSettimana]
     turni_map = {'M': 'mattina', 'P': 'pomeriggio', 'N': 'notte'}
@@ -120,8 +110,7 @@ def evaluate_fairness_node(state: SchedulerForm) -> SchedulerForm:
     lavoratore_piu_sfortunato = max(punteggi, key=punteggi.get)
     peggior_punteggio = punteggi[lavoratore_piu_sfortunato]
 
-    spinner.succeed("Fine valutazione della fairness.")
-    spinner.stop()
+    print("Fine valutazione della fairness.")
 
     if not state.dipendente_piu_sfortunato:
         return {

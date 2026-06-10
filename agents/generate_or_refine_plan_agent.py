@@ -1,6 +1,5 @@
 from input_type import SchedulerForm, Piano
 from llm import llm_call
-from halo import Halo
 
 CALENDARIO = """
 
@@ -86,13 +85,8 @@ def generate_or_refine_plan_node(state: SchedulerForm) -> SchedulerForm:
     prompts = []
 
     if state.retry:
-        spinner = Halo(
-            text='Raffinamento del piano in corso',
-            spinner='line',
-            color='cyan'
-        )
-        spinner.start()
-
+        print('Raffinamento del piano in corso')
+        
         prompts.append(("system", SYSTEM_PROMPT +"\n"+ PROMPT_REFINE))
         user_input = "Piano da Raffinare:\n{piano_attuale}\n"
         
@@ -110,12 +104,8 @@ def generate_or_refine_plan_node(state: SchedulerForm) -> SchedulerForm:
 
         prompts.append(("user", user_input))
     else:
-        spinner = Halo(
-            text='Generazione del piano in corso',
-            spinner='line',
-            color='cyan'
-        )        
-        spinner.start()
+        print('Generazione del piano in corso')
+           
         prompts.append(("system", SYSTEM_PROMPT +"\n"+ PROMPT_GENERATE))
         prompts.append(("user", "Calendario da seguire: {calendario}\nAgente Estrattore Preferenze [Output]: {vincoli_soft}"))
         
@@ -126,7 +116,6 @@ def generate_or_refine_plan_node(state: SchedulerForm) -> SchedulerForm:
         temperature=0.6
     )
 
-    spinner.succeed(f"Fine {'generazione' if not state.retry else 'raffinamento'} del piano.")
-    spinner.stop()
+    print(f"Fine {'generazione' if not state.retry else 'raffinamento'} del piano.")
 
     return {"piano_attuale": piano_attuale.model_dump()}

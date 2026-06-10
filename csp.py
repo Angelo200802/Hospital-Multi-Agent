@@ -168,7 +168,9 @@ def solve_hard_constraints(state: SchedulerForm) -> Dict[str, Any]:
                 if bool_var.Name() == nome_var:
                     vincoli_non_soddisfatti.append(descrizione)
                     break
-                    
+
+        print("Vincoli violati identificati:", "/n".join(vincoli_non_soddisfatti),flush=True)
+
         return {
             "retry" : True,
             "hard_constraints_valid" : False, 
