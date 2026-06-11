@@ -49,6 +49,8 @@ def route_after_preferences_check(state: SchedulerForm) -> str:
     preferenze = state.preferenze_valide
     
     if preferenze and preferenze.valide:
+        with open(f"{os.getcwd()}/output/preferenze_estratte.json", "w") as f:
+            f.write(state.model_dump_json())
         return "generate_plan_node"
     else:
         return "correct_preferences_node"

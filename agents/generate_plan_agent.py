@@ -1,5 +1,10 @@
-from input_type import SchedulerForm, Piano
-from llm import llm_call
+from ..input_type import SchedulerForm, Piano
+from ..llm import llm_call
+from dotenv import load_dotenv
+import os
+
+load_dotenv()
+GEMINI_MODEL_NAME = os.getenv("GEMINI_MODEL_GEN")
 
 CALENDARIO = """
 
@@ -30,10 +35,11 @@ Il piano deve essere conforme ai vincoli hard e cercare di massimizzare la soddi
 
 ## Strategia di Ragionamento (Passo-Passo): 
 Prima di generare l'output finale, devi elaborare mentalmente il piano seguendo questo ordine rigoroso:
-- Ferie e Indisponibilità: Inserisci subito i riposi ('R') nei giorni in cui i dipendenti hanno dichiarato indisponibilità assoluta (es. ferie).
-- Copertura Minima: Assicurati che in ogni giorno e per ogni turno (M, P, N) ci sia il numero minimo di dipendenti richiesto.
-- Calcolo dei 25 turni: Per ogni dipendente, conta il carico. Somma i turni 'M' e 'P' (valore 1) e i turni 'N' (valore 2) finché non arrivi a ESATTAMENTE 25 per ciascuno. Riempi i restanti giorni con 'R'.
-- Verifica dei 2 giorni post-notte: Controlla che ogni 'N' sia categoricamente seguito da due 'R'.
+1. Per ogni dipendente crea mentalmente una lista di 31 turni (es. Dipendente A -> ['M', 'R', 'N', ...]) che rappresentano i turni assegnati per ogni giorno del mese.
+2. Calcolo dei 25 turni: Per ogni dipendente, conta il carico. Somma i turni 'M' e 'P' (valore 1) e i turni 'N' (valore 2) finché non arrivi a ESATTAMENTE 25 per ciascuno. Riempi i restanti giorni con 'R'.
+3. Verifica dei 2 giorni post-notte: Controlla che ogni 'N' sia categoricamente seguito da due 'R'.
+4. Verifica delle 36 ore: Assicurati che ogni 7 giorni, nessun dipendente superi le 36 ore totali (calcolando 'M' e 'P' come 6 ore e 'N' come 12 ore).
+5. Una volta elaborato il piano assicurati che in ogni giorno e per ogni turno (M, P, N) ci sia il numero minimo di dipendenti richiesto.
 
 ## Il tuo Output:
 Devi restituire un piano di turni completo per tutti i dipendenti per ogni giorno del periodo di pianificazione (7 Dicembre - 7 Gennaio).
@@ -69,13 +75,14 @@ def generate_plan_node(state: SchedulerForm) -> SchedulerForm:
                     }
     prompts = [
         ("system", SYSTEM_PROMPT),
-        ("user", "Calendario da seguire: {calendario}\nAgente Estrattore Preferenze [Output]: {vincoli_soft}")
+        ("user", "##Calendario da seguire: {calendario}\n##Agente Estrattore Preferenze [Output]: {vincoli_soft}")
     ]
 
     print('Generazione del piano in corso')      
         
     piano_attuale = llm_call(
         prompts=prompts,
+        model = GEMINI_MODEL_NAME,
         prompt_variables=prompt_variables,
         structured_output=Piano,
         temperature=0.6
@@ -84,3 +91,18 @@ def generate_plan_node(state: SchedulerForm) -> SchedulerForm:
     print(f"Fine generazione del piano.")
 
     return {"piano_attuale": piano_attuale.model_dump()}
+
+
+if __name__ == "__main__":
+    import json
+    with open(f"{os.getcwd()}/progetto/output/preferenze_estratte.json", "r") as f:
+        state = f.read()
+
+    state = {k:v for k,v in json.loads(state).items() if v is not None}
+    state = SchedulerForm.model_validate(state)
+
+    out = generate_plan_node(state)
+    print(out)
+    out['piano_attuale'] = {"assegnamenti" : [{"id_dipendente" : elem["id_dipendente"], "turni" : [t.value for t in elem["turni_assegnati"]]} for elem in out['piano_attuale']['assegnamenti']]}
+    with open(f"{os.getcwd()}/progetto/output/piano_generato.json", "w") as f:
+        f.write(json.dumps(out))

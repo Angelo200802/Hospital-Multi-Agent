@@ -1,6 +1,11 @@
 from agents.generate_plan_agent import CALENDARIO, HARD_CONSTRAINTS
 from input_type import SchedulerForm, Piano
 from llm import llm_call
+from dotenv import load_dotenv
+import os
+
+load_dotenv()
+GEMINI_MODEL_NAME = os.getenv("GEMINI_MODEL_GEN")
 
 SYSTEM_PROMPT = """
 ## Il tuo Ruolo:
@@ -18,6 +23,15 @@ Devi raffinare il piano di turni esistente in base al feedback ricevuto dagli al
 - Feedback sui vincoli hard violati forniti dall'Agente di Verifica Vincoli Hard (se presenti).
 - Informazioni sul dipendente più sfortunato fornite dall'Agente di Valutazione Fairness (se presenti).
 - Il piano attuale generato nella precedente iterazione.
+
+##Strategia di Ragionamento (Passo-Passo):
+1. Analizza il feedback sui vincoli hard violati e identifica esattamente quali vincoli sono stati infranti e in quali parti del piano generato precedentemente.
+2. Analizza le informazioni sul dipendente più sfortunato per capire quali sono le sue preferenze e quali aspetti del piano attuale stanno contribuendo alla sua situazione sfortunata.
+3. Elabora un piano raffinato che corregga i vincoli hard violati, assicurandoti di rispettarli rigorosamente.
+4. Esempi di correzioni:
+    - Se dopo un turno 'N' non ci sono 2 giorni di 'R', inserisci 'R' nei giorni successivi.
+    - Se un dipendente ha più di 25 turni, riduci il numero di turni assegnati a quel dipendente mettendo un numero di 'R' pari al numero di turni in eccesso.
+    - Se un dipendente specializzato è necessario per un turno ma non è assegnato inseriscilo in quel turno
 
 ## Il tuo Output:
 Devi restituire un nuovo piano di turni che tenga conto del feedback ricevuto sui vincoli hard violati oppure che migliori la situazione del dipendente più sfortunato.
@@ -55,6 +69,7 @@ def refine_plan_node(state: SchedulerForm) -> SchedulerForm:
         
     piano_attuale = llm_call(
         prompts=prompts,
+        model = GEMINI_MODEL_NAME,
         prompt_variables=prompt_variables,
         structured_output=Piano,
         temperature=0.6

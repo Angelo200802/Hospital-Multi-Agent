@@ -29,6 +29,7 @@ def create_llm(api_key: str,
     return llm
 
 def llm_call(prompts: List[Tuple[str, str]],
+             model:str = GEMINI_MODEL_NAME,
              prompt_variables: Optional[Dict[str, Any]] = None,
              temperature: float = 0.7,
              structured_output: Optional[Type[BaseModel]] = None):
@@ -42,7 +43,7 @@ def llm_call(prompts: List[Tuple[str, str]],
             
             llm = create_llm(
                 api_key=api_key, 
-                model_name=GEMINI_MODEL_NAME, 
+                model_name=model, 
                 temperature=temperature, 
                 structured_output=structured_output
             )

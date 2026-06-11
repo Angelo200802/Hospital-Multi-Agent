@@ -1,6 +1,6 @@
 from ortools.sat.python import cp_model
 from typing import Dict, Any, Tuple
-from input_type import SchedulerForm, Piano
+from .input_type import SchedulerForm, Piano, TurnoAssegnato
 
 NUM_DAYS = 31       # 7 Dicembre - 7 Gennaio
 NUM_SHIFTS = 3      # 0=Mattina, 1=Pomeriggio, 2=Notte
@@ -96,15 +96,13 @@ def assign_shifts_from_llm(
         shifts: Dict, 
         piano_llm: Piano,
         nurses: list[str]
-) -> Tuple[cp_model.CpModel,Dict]:
+) -> cp_model.CpModel:
     
     shift_map = {
         "M": 0,  # Mattina
         "P": 1,  # Pomeriggio
         "N": 2,  # Notte
     }
-
-    assunzioni_piano = {}
 
     if piano_llm:
         for n in nurses:
@@ -113,25 +111,20 @@ def assign_shifts_from_llm(
             for d in range(NUM_DAYS):
                 turno_llm = turni_assegnati[d]
                 
-                nome_assunzione = f'assumi_piano_n{n}_d{d}_turno_{turno_llm}'
-                bool_assunzione = model.NewBoolVar(nome_assunzione)
-
-                info_vincolo = f"Dipendente {n}, Giorno {d+1}: Turno assegnato '{turno_llm}'"
-                assunzioni_piano[bool_assunzione] = info_vincolo
                 
                 if turno_llm in shift_map:
                     s_assegnato = shift_map[turno_llm]
                     for s in range(NUM_SHIFTS):
                         if s == s_assegnato:
-                            model.Add(shifts[(n, d, s)] == 1).OnlyEnforceIf(bool_assunzione)
+                            model.Add(shifts[(n, d, s)] == 1)
                         else:
-                            model.Add(shifts[(n, d, s)] == 0).OnlyEnforceIf(bool_assunzione)
+                            model.Add(shifts[(n, d, s)] == 0)
                 else:
                     # Se ha il giorno di riposo ('R'), tutte le variabili di quel giorno valgono 0
                     for s in range(NUM_SHIFTS):
-                        model.Add(shifts[(n, d, s)] == 0).OnlyEnforceIf(bool_assunzione)
+                        model.Add(shifts[(n, d, s)] == 0)
     
-    return model, assunzioni_piano
+    return model
 
 def solve_hard_constraints(state: SchedulerForm) -> Dict[str, Any]:
     """
@@ -147,10 +140,7 @@ def solve_hard_constraints(state: SchedulerForm) -> Dict[str, Any]:
     
     model, shifts = create_hard_constraints(std_nurses, spec_nurses)
     
-    assigned_model, mappa_assunzioni = assign_shifts_from_llm(model, shifts, piano_llm,nurses)
-
-    lista_letterali_assunzioni = list(mappa_assunzioni.keys())
-    model.AddAssumptions(lista_letterali_assunzioni)
+    assigned_model = assign_shifts_from_llm(model, shifts, piano_llm,nurses)
 
     solver = cp_model.CpSolver()
     status = solver.Solve(assigned_model)
@@ -160,22 +150,6 @@ def solve_hard_constraints(state: SchedulerForm) -> Dict[str, Any]:
     vincoli_non_soddisfatti = []
 
     if status == cp_model.INFEASIBLE:
-        print("Il piano generato dall'agente viola i vincoli")
-        
-        indici_core_colpevoli = solver.SufficientAssumptionsForInfeasibility()
-        
-        for index in indici_core_colpevoli:
-            
-            var_proto = model.Proto().variables[index]
-            nome_var = var_proto.name
-            
-            for bool_var, descrizione in mappa_assunzioni.items():
-                if bool_var.Name() == nome_var:
-                    vincoli_non_soddisfatti.append(descrizione)
-                    break
-
-        print("Vincoli violati identificati:", "/n".join(vincoli_non_soddisfatti),flush=True)
-
         return {
             "retry" : True,
             "hard_constraints_valid" : False, 
@@ -193,3 +167,29 @@ def solve_hard_constraints(state: SchedulerForm) -> Dict[str, Any]:
             "hard_constraints_valid" : False,
             "feedback_errori_hard" : "Impossibile determinare la validità del piano (Errore generico del risolvitore)."
         }
+    
+
+if __name__ == "__main__":
+    import json,os
+    with open(f"{os.getcwd()}/progetto/output/preferenze_estratte.json", "r") as f:
+        state = f.read()
+    f.close()
+    state = {k:v for k,v in json.loads(state).items() if v is not None}
+    state = SchedulerForm.model_validate(state)
+    with open(f"{os.getcwd()}/progetto/output/piano_generato.json", "r") as f:
+        piano = f.read()
+    f.close()
+    map_turni = {
+        'M' : TurnoAssegnato.M,
+        'P' : TurnoAssegnato.P,
+        'N' : TurnoAssegnato.N,
+        'R' : TurnoAssegnato.R
+    }
+    piano = json.loads(piano)['piano_attuale']
+    for elem in piano['assegnamenti']:
+        elem['turni_assegnati'] = [map_turni[t] for t in elem['turni']]
+    piano = Piano.model_validate(piano)
+    print(piano)
+    state.piano_attuale = piano
+    out = solve_hard_constraints(state)
+    print(out)
