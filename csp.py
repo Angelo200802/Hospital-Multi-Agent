@@ -64,13 +64,20 @@ def create_hard_constraints(
         model.Add(sum(workload_mensile) == 25)
 
         # VINCOLO 6: Massimo 36 ore settimanali (Finestra mobile di 7 giorni)
-        for start_d in range(NUM_DAYS - 6):
+        for start_d in range(0, NUM_DAYS, 7):
             workload_settimanale = []
-            for d in range(start_d, start_d + 7):
-                workload_settimanale.append(6 * shifts[(n, d, 0)]) 
-                workload_settimanale.append(6 * shifts[(n, d, 1)]) 
-                workload_settimanale.append(6 * 2 * shifts[(n, d, 2)]) 
             
+            # end_d serve a gestire correttamente gli ultimi 3 giorni del mese (dal 28 al 30),
+            # evitando che il range vada fuori dall'indice (Out of Bounds).
+            end_d = min(start_d + 7, NUM_DAYS)
+            
+            for d in range(start_d, end_d):
+                workload_settimanale.append(6 * shifts[(n, d, 0)])        # Mattina = 6 ore
+                workload_settimanale.append(6 * shifts[(n, d, 1)])        # Pomeriggio = 6 ore
+                workload_settimanale.append(12 * shifts[(n, d, 2)])       # Notte = 12 ore (doppio carico)
+            
+            # La somma delle ore nella singola settimana (o nei giorni rimanenti) 
+            # non deve superare le 36 ore
             model.Add(sum(workload_settimanale) <= 36)
 
         giorni_liberi = []
@@ -101,8 +108,6 @@ def assign_shifts_from_llm(
 
     if piano_llm:
         for n in nurses:
-            # Ottiene la lista di 31 turni per il dipendente 'n' (es. ['M', 'R', 'N', ...])
-            # Se un dipendente manca, riempie i suoi turni con Riposi ('R')
             turni_assegnati = [piano_n for piano_n in piano_llm.assegnamenti if piano_n.id_dipendente == str(n)][0].turni_assegnati
             
             for d in range(NUM_DAYS):
