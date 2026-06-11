@@ -1,4 +1,4 @@
-from generate_plan_agent import CALENDARIO, HARD_CONSTRAINTS
+from agents.generate_plan_agent import CALENDARIO, HARD_CONSTRAINTS
 from input_type import SchedulerForm, Piano
 from llm import llm_call
 
@@ -44,10 +44,10 @@ def refine_plan_node(state: SchedulerForm) -> SchedulerForm:
 
     if state.feedback_errori_hard:
         prompt_variables["feedback_errori_hard"] = state.feedback_errori_hard
-        prompts[1][1] += "\n## Feedback sui vincoli hard violati:\n{feedback_errori_hard}"
+        prompts[1] = ("user",prompts[1][1] + "\n## Feedback sui vincoli hard violati:\n{feedback_errori_hard}")
     if state.dipendente_piu_sfortunato:
         prompt_variables["dipendente_piu_sfortunato"] = state.dipendente_piu_sfortunato
-        prompts[1][1] += "\n## Informazioni sul dipendente più sfortunato:\n{dipendente_piu_sfortunato}"
+        prompts[1] = ("user",prompts[1][1] + "\n## Informazioni sul dipendente più sfortunato:\n{dipendente_piu_sfortunato}")
     
     
 
