@@ -34,12 +34,22 @@ def refine_plan_node(state: SchedulerForm) -> SchedulerForm:
     
     prompt_variables = { "calendario": CALENDARIO , 
                         "hard_constraints": HARD_CONSTRAINTS,
+                        "piano_precedente": state.piano_attuale.__str__(),
                         "vincoli_soft": state.vincoli_soft.__str__()  
-                    }
+                        }
     prompts = [
         ("system", SYSTEM_PROMPT),
-        ("user", "Calendario da seguire: {calendario}\nAgente Estrattore Preferenze [Output]: {vincoli_soft}")
+        ("user", "## Calendario da seguire: {calendario}\n##Agente Estrattore Preferenze [Output]:\n{vincoli_soft} ##Piano generato precendentemente:\n{piano_precedente}")
     ]
+
+    if state.feedback_errori_hard:
+        prompt_variables["feedback_errori_hard"] = state.feedback_errori_hard
+        prompts[1][1] += "\n## Feedback sui vincoli hard violati:\n{feedback_errori_hard}"
+    if state.dipendente_piu_sfortunato:
+        prompt_variables["dipendente_piu_sfortunato"] = state.dipendente_piu_sfortunato
+        prompts[1][1] += "\n## Informazioni sul dipendente più sfortunato:\n{dipendente_piu_sfortunato}"
+    
+    
 
     print('Raffinamento del piano in corso')      
         
