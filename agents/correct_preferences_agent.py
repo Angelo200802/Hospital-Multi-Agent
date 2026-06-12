@@ -46,7 +46,7 @@ def correct_preferences_node(state: SchedulerForm):
             "correzioni": correzioni
         },
         structured_output=VincoliStrutturati,
-        temperature=0.5
+        temperature=0.1
     )
     print("Correzione delle preferenze completata.")
     

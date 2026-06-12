@@ -92,8 +92,9 @@ def generate_plan_node(state: SchedulerForm) -> SchedulerForm:
         prompts=prompts,
         model = GEMINI_MODEL_NAME,
         prompt_variables=prompt_variables,
+        use_prod=True,
         structured_output=Piano,
-        temperature=0.6
+        temperature=0.1
     )
 
     print(f"Fine generazione del piano.")

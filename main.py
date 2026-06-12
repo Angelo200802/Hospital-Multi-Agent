@@ -105,9 +105,18 @@ def build_workflow():
     # Compilazione del grafo
     return workflow.compile()
 
+def get_graph(app):
+    try:
+        png_bytes = app.get_graph().draw_mermaid_png()
+        with open("output/workflow_graph.png", "wb") as f:
+            f.write(png_bytes)
+    except Exception as e:
+        print(f"Errore durante la generazione del grafo: {e}")
+        return None
+
 if __name__ == "__main__":
     app = build_workflow()
-    
+    get_graph(app)
     if INPUT_FILE_NAME:
         path = f"{os.getcwd()}/input/{INPUT_FILE_NAME}"
         

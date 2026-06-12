@@ -32,35 +32,36 @@ def llm_call(prompts: List[Tuple[str, str]],
              model:str = GEMINI_MODEL_NAME,
              prompt_variables: Optional[Dict[str, Any]] = None,
              temperature: float = 0.7,
+             use_prod = False,
              structured_output: Optional[Type[BaseModel]] = None):
     
     prompts_template = ChatPromptTemplate.from_messages(prompts)
     inputs = prompt_variables if prompt_variables else {}
 
-    for i, api_key in enumerate(GEMINI_API_POOL):
-        try:
-            print(f"🔄 Tentativo di chiamata LLM con la chiave {i+1}/{len(GEMINI_API_POOL)}...")
-            
-            llm = create_llm(
-                api_key=api_key, 
-                model_name=model, 
-                temperature=temperature, 
-                structured_output=structured_output
-            )
-            #print(f"SystemPrompt:\n{prompts_template.format_messages(**inputs)[0].content}")
-            #print(f"UserPrompt:\n{prompts_template.format_messages(**inputs)[1].content}")
-            chain = prompts_template | llm
-            return chain.invoke(inputs)
-            
-        except Exception as e:
-            print(f"⚠️ Chiave {i+1} fallita. Errore: {e}")
-
-    llm = create_llm(
-        api_key=GEMINI_API_PROD, 
-        model_name=GEMINI_MODEL_NAME, 
-        temperature=temperature, 
-        structured_output=structured_output
-    )
-    print("🔄 Tutte le chiavi di test fallite. Utilizzo la chiave di produzione.")
-    chain = prompts_template | llm
-    return chain.invoke(inputs)
+    if not use_prod:
+        for i, api_key in enumerate(GEMINI_API_POOL):
+            try:
+                print(f"🔄 Tentativo di chiamata LLM con la chiave {i+1}/{len(GEMINI_API_POOL)}...")
+                
+                llm = create_llm(
+                    api_key=api_key, 
+                    model_name=model, 
+                    temperature=temperature, 
+                    structured_output=structured_output
+                )
+                #print(f"SystemPrompt:\n{prompts_template.format_messages(**inputs)[0].content}")
+                #print(f"UserPrompt:\n{prompts_template.format_messages(**inputs)[1].content}")
+                chain = prompts_template | llm
+                return chain.invoke(inputs)
+                
+            except Exception as e:
+                print(f"⚠️ Chiave {i+1} fallita. Errore: {e}")
+    else:
+        llm = create_llm(
+            api_key=GEMINI_API_PROD, 
+            model_name=model, 
+            temperature=temperature, 
+            structured_output=structured_output
+        )
+        chain = prompts_template | llm
+        return chain.invoke(inputs)

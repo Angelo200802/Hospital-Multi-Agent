@@ -162,8 +162,8 @@ def assign_shifts_from_llm(
             turni_assegnati = [piano_n for piano_n in piano_llm.assegnamenti if piano_n.id_dipendente == str(n)][0].turni_assegnati
             
             for d in range(NUM_DAYS):
-                turno_llm = turni_assegnati[d]
-                
+            # AGGIUNGI .value QUI SOTTO
+                turno_llm = turni_assegnati[d].value 
                 
                 if turno_llm in shift_map:
                     s_assegnato = shift_map[turno_llm]
@@ -172,10 +172,6 @@ def assign_shifts_from_llm(
                             model.Add(shifts[(n, d, s)] == 1)
                         else:
                             model.Add(shifts[(n, d, s)] == 0)
-                else:
-                    # Se ha il giorno di riposo ('R'), tutte le variabili di quel giorno valgono 0
-                    for s in range(NUM_SHIFTS):
-                        model.Add(shifts[(n, d, s)] == 0)
     
     return model
 
@@ -234,17 +230,21 @@ if __name__ == "__main__":
         piano = f.read()
     f.close()
     piano_di_test_valido = {
-        'A': ['P', 'N', 'R', 'R', 'M', 'M', 'M', 'M', 'M', 'P', 'N', 'R', 'R', 'M', 'N', 'R', 'R', 'P', 'P', 'P', 'P', 'N', 'R', 'R', 'N', 'R', 'R', 'N', 'R', 'R', 'P'],
-        'B': ['P', 'M', 'P', 'M', 'N', 'R', 'R', 'P', 'N', 'R', 'R', 'N', 'R', 'R', 'N', 'R', 'R', 'N', 'R', 'R', 'N', 'R', 'R', 'N', 'R', 'R', 'M', 'P', 'M', 'M', 'N'],
-        'C': ['N', 'R', 'R', 'P', 'P', 'M', 'M', 'N', 'R', 'R', 'N', 'R', 'R', 'P', 'M', 'M', 'P', 'M', 'N', 'R', 'R', 'N', 'R', 'R', 'P', 'M', 'P', 'M', 'N', 'R', 'R'],
-        'D': ['M', 'M', 'P', 'N', 'R', 'R', 'P', 'P', 'N', 'R', 'R', 'P', 'N', 'R', 'R', 'P', 'P', 'N', 'R', 'R', 'N', 'R', 'R', 'P', 'M', 'P', 'N', 'R', 'R', 'N', 'R'],
-        'E': ['N', 'R', 'R', 'P', 'N', 'R', 'R', 'M', 'P', 'M', 'M', 'N', 'R', 'R', 'M', 'P', 'N', 'R', 'R', 'M', 'P', 'P', 'N', 'R', 'R', 'N', 'R', 'R', 'P', 'P', 'M'],
-        'F': ['M', 'N', 'R', 'R', 'M', 'N', 'R', 'R', 'M', 'N', 'R', 'R', 'M', 'P', 'P', 'N', 'R', 'R', 'N', 'R', 'R', 'M', 'N', 'R', 'R', 'M', 'N', 'R', 'R', 'P', 'N'],
-        'G': ['R', 'M', 'N', 'R', 'R', 'P', 'P', 'N', 'R', 'R', 'P', 'M', 'P', 'M', 'P', 'N', 'R', 'R', 'M', 'N', 'R', 'R', 'P', 'P', 'M', 'P', 'M', 'M', 'N', 'R', 'R'],
-        'H': ['R', 'P', 'M', 'N', 'R', 'R', 'N', 'R', 'R', 'N', 'R', 'R', 'M', 'N', 'R', 'R', 'M', 'M', 'P', 'P', 'M', 'P', 'M', 'M', 'P', 'N', 'R', 'R', 'M', 'N', 'R'],
-        'I': ['R', 'M', 'N', 'R', 'R', 'P', 'N', 'R', 'R', 'P', 'P', 'M', 'P', 'N', 'R', 'R', 'N', 'R', 'R', 'M', 'M', 'M', 'M', 'M', 'N', 'R', 'R', 'P', 'P', 'M', 'P'],
-        'J': ['R', 'P', 'M', 'M', 'P', 'N', 'R', 'R', 'P', 'M', 'M', 'P', 'N', 'R', 'R', 'M', 'M', 'P', 'M', 'N', 'R', 'R', 'P', 'N', 'R', 'R', 'P', 'N', 'R', 'R', 'M']
-    }   
+        'A': ['N', 'R', 'R', 'P', 'P', 'M', 'M', 'M', 'M', 'N', 'R', 'R', 'N', 'R', 'R', 'P', 'R', 'M', 'P', 'P', 'N', 'R', 'R', 'R', 'M', 'N', 'R', 'R', 'P', 'P', 'N'], 
+        'B': ['P', 'P', 'N', 'R', 'R', 'R', 'N', 'R', 'R', 'P', 'R', 'M', 'N', 'R', 'R', 'N', 'R', 'R', 'P', 'P', 'M', 'P', 'P', 'M', 'N', 'R', 'R', 'P', 'M', 'M', 'N'], 
+        'C': ['M', 'R', 'P', 'P', 'P', 'N', 'R', 'R', 'P', 'P', 'P', 'N', 'R', 'R', 'P', 'M', 'P', 'N', 'R', 'R', 'P', 'M', 'N', 'R', 'R', 'M', 'N', 'R', 'R', 'N', 'R'], 
+        'D': ['M', 'R', 'P', 'M', 'M', 'R', 'N', 'R', 'R', 'M', 'N', 'R', 'R', 'M', 'M', 'P', 'M', 'N', 'R', 'R', 'P', 'P', 'N', 'R', 'R', 'P', 'M', 'M', 'P', 'M', 'M'], 
+        'E': ['M', 'N', 'R', 'R', 'M', 'P', 'P', 'N', 'R', 'R', 'P', 'P', 'P', 'P', 'N', 'R', 'R', 'M', 'N', 'R', 'R', 'M', 'M', 'M', 'M', 'M', 'R', 'M', 'N', 'R', 'R'], 
+        'F': ['M', 'N', 'R', 'R', 'P', 'N', 'R', 'R', 'N', 'R', 'R', 'P', 'P', 'N', 'R', 'R', 'R', 'P', 'N', 'R', 'R', 'N', 'R', 'R', 'P', 'M', 'M', 'P', 'P', 'M', 'N'], 
+        'G': ['M', 'N', 'R', 'R', 'P', 'M', 'P', 'M', 'M', 'M', 'R', 'P', 'M', 'P', 'M', 'N', 'R', 'R', 'R', 'P', 'N', 'R', 'R', 'P', 'P', 'P', 'P', 'N', 'R', 'R', 'P'], 
+        'H': ['P', 'M', 'M', 'N', 'R', 'R', 'P', 'P', 'M', 'M', 'P', 'P', 'M', 'R', 'P', 'R', 'P', 'P', 'M', 'N', 'R', 'R', 'P', 'P', 'R', 'M', 'M', 'N', 'R', 'R', 'P'], 
+        'I': ['N', 'R', 'R', 'P', 'P', 'M', 'P', 'P', 'P', 'P', 'M', 'M', 'R', 'M', 'R', 'M', 'N', 'R', 'R', 'M', 'P', 'M', 'M', 'P', 'N', 'R', 'R', 'P', 'N', 'R', 'R'], 
+        'J': ['N', 'R', 'R', 'M', 'N', 'R', 'R', 'R', 'M', 'M', 'N', 'R', 'R', 'M', 'P', 'M', 'N', 'R', 'R', 'M', 'M', 'P', 'M', 'M', 'P', 'N', 'R', 'R', 'M', 'N', 'R'], 
+        'K': ['P', 'M', 'P', 'N', 'R', 'R', 'M', 'P', 'N', 'R', 'R', 'N', 'R', 'R', 'N', 'R', 'R', 'P', 'P', 'N', 'R', 'R', 'M', 'N', 'R', 'R', 'P', 'M', 'M', 'R', 'N'], 
+        'L': ['P', 'P', 'M', 'P', 'N', 'R', 'R', 'R', 'P', 'N', 'R', 'R', 'R', 'N', 'R', 'R', 'N', 'R', 'R', 'M', 'P', 'N', 'R', 'R', 'M', 'M', 'M', 'M', 'M', 'M', 'N'], 
+        'M': ['M', 'R', 'N', 'R', 'R', 'P', 'M', 'N', 'R', 'R', 'M', 'M', 'P', 'P', 'R', 'M', 'M', 'M', 'M', 'M', 'P', 'M', 'M', 'N', 'R', 'R', 'N', 'R', 'R', 'P', 'M']
+    }
+  
     map_turni = {
         'M' : TurnoAssegnato.M,
         'P' : TurnoAssegnato.P,
@@ -253,11 +253,10 @@ if __name__ == "__main__":
     }
     piano = json.loads(piano)['piano_attuale']
     for elem in piano['assegnamenti']:
-        elem['turni_assegnati'] = [map_turni[t] for t in elem['turni']]
+        elem['turni_assegnati'] = [map_turni[v] for v in piano_di_test_valido[elem['id_dipendente']]]
     piano = Piano.model_validate(piano)
     print(piano)
     state.piano_attuale = piano
     out = solve_hard_constraints(state)
     print("vincoli violati:\n", genera_feedback_violazioni(piano))
-    print(len(genera_feedback_violazioni(piano)))
     print(out)

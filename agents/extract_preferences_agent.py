@@ -105,7 +105,7 @@ def extract_preferences_node(state: SchedulerForm) -> SchedulerForm:
     risultato_estrazione = llm_call(
         prompts=prompts,
         prompt_variables={"preferenze_testuali": testo_preferenze},
-        temperature=0.5,
+        temperature=0.1,
         structured_output=VincoliStrutturati
     )
     
