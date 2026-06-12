@@ -22,7 +22,7 @@ def route_after_hard_check(state: SchedulerForm) -> str:
     Se rispettati -> Passa al calcolo della fairness.
     """
     if not state.hard_constraints_valid and not state.best_plan:
-        return "refine_plan_node"
+        return "generate_plan_node"
     if not state.hard_constraints_valid and state.best_plan:
         return "output_finale_node"
     
@@ -49,8 +49,6 @@ def route_after_preferences_check(state: SchedulerForm) -> str:
     preferenze = state.preferenze_valide
     
     if preferenze and preferenze.valide:
-        with open(f"{os.getcwd()}/output/preferenze_estratte.json", "w") as f:
-            f.write(state.model_dump_json())
         return "generate_plan_node"
     else:
         return "correct_preferences_node"
@@ -88,7 +86,7 @@ def build_workflow():
         "verify_hard_constraints_node",
         route_after_hard_check,
         {
-            "refine_plan_node": "refine_plan_node",
+            "generate_plan_node": "generate_plan_node",
             "evaluate_fairness_node": "evaluate_fairness_node",
             "output_finale_node": "output_finale_node"
         }

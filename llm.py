@@ -47,7 +47,8 @@ def llm_call(prompts: List[Tuple[str, str]],
                 temperature=temperature, 
                 structured_output=structured_output
             )
-            
+            #print(f"SystemPrompt:\n{prompts_template.format_messages(**inputs)[0].content}")
+            #print(f"UserPrompt:\n{prompts_template.format_messages(**inputs)[1].content}")
             chain = prompts_template | llm
             return chain.invoke(inputs)
             

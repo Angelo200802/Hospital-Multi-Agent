@@ -1,5 +1,5 @@
-from ..input_type import SchedulerForm, Piano
-from ..llm import llm_call
+from input_type import SchedulerForm, Piano
+from llm import llm_call
 from dotenv import load_dotenv
 import os
 
@@ -28,7 +28,7 @@ SYSTEM_PROMPT = """
 Sei un agente intelligente incaricato di generare un piano di turni per un gruppo di dipendenti di una struttura ospedaliera, tenendo conto delle loro preferenze e dei vincoli operativi. 
 
 ## Cosa Devi Fare:
-Il tuo obiettivo è creare un piano che sia il più possibile equo e soddisfacente per tutti i dipendenti, rispettando al contempo le esigenze dell'organizzazione.
+Il tuo obiettivo è creare/modificare un piano che sia il più possibile equo e soddisfacente per tutti i dipendenti, rispettando al contempo le esigenze dell'organizzazione.
 Il piano deve essere conforme ai vincoli hard e cercare di massimizzare la soddisfazione delle preferenze dei dipendenti estratte dall'Agente di Estrazione Preferenze.
 
 {hard_constraints}
@@ -36,16 +36,22 @@ Il piano deve essere conforme ai vincoli hard e cercare di massimizzare la soddi
 ## Strategia di Ragionamento (Passo-Passo): 
 Prima di generare l'output finale, devi elaborare mentalmente il piano seguendo questo ordine rigoroso:
 1. Per ogni dipendente crea mentalmente una lista di 31 turni (es. Dipendente A -> ['M', 'R', 'N', ...]) che rappresentano i turni assegnati per ogni giorno del mese.
-2. Calcolo dei 25 turni: Per ogni dipendente, conta il carico. Somma i turni 'M' e 'P' (valore 1) e i turni 'N' (valore 2) finché non arrivi a ESATTAMENTE 25 per ciascuno. Riempi i restanti giorni con 'R'.
-3. Verifica dei 2 giorni post-notte: Controlla che ogni 'N' sia categoricamente seguito da due 'R'.
-4. Verifica delle 36 ore: Assicurati che ogni 7 giorni, nessun dipendente superi le 36 ore totali (calcolando 'M' e 'P' come 6 ore e 'N' come 12 ore).
-5. Una volta elaborato il piano assicurati che in ogni giorno e per ogni turno (M, P, N) ci sia il numero minimo di dipendenti richiesto.
+2. Verifica dei 2 giorni post-notte: Controlla che ogni 'N' sia categoricamente seguito da due 'R'.
+3. Verifica delle 36 ore: Assicurati che nei 7 giorni che compongono la settimana ci sia almeno un turno di riposo per rietrare nel vincolo di 36 ore settimanli.
+4. Calcolo dei 25 turni: Per ogni dipendente, conta il carico sommando i turni 'M' e 'P' (valore 1) e i turni 'N' (valore 2) finché non arrivi a ESATTAMENTE 25 per ciascuno, se li ha già raggiunti, non assegnare più turni a quel dipendente.
+5. Verifica che per ogni colonna virtuale (giorno della settimana) ci siano i numeri minimi di dipendenti richiesti:
+    - 2 M, 2 P, 2 N se non ci sono specializzati.
+    - 1 specializzato + 2 qualsiasi se ci sono specializzati.
+
+## Il tuo input:
+- Il calendario da seguire con evidenziati i giorni festivi.
+- Le preferenze soft estratte dall'Agente di Estrazione Preferenze.
+- Il piano generato precedentemente (se presente, altrimenti ignora questo punto).
 
 ## Il tuo Output:
 Devi restituire un piano di turni completo per tutti i dipendenti per ogni giorno del periodo di pianificazione (7 Dicembre - 7 Gennaio).
 Per ogni dipendente devi creare una lista di 31 turni (es. Dipendente A -> ['M', 'R', 'N', ...]) che rappresentano i turni assegnati per ogni giorno del mese, dove 'M' = Mattina, 'P' = Pomeriggio, 'N' = Notte, 'R' = Riposo.
 Restituisci il piano nel formato strutturato indicato.
-
 
 """
 
@@ -77,7 +83,9 @@ def generate_plan_node(state: SchedulerForm) -> SchedulerForm:
         ("system", SYSTEM_PROMPT),
         ("user", "##Calendario da seguire: {calendario}\n##Agente Estrattore Preferenze [Output]: {vincoli_soft}")
     ]
-
+    if state.piano_attuale:
+        prompt_variables["piano_precedente"] = state.piano_attuale.__str__()
+        prompts[1] = ("user",prompts[1][1] + "\n##Piano generato precendentemente:\n{piano_precedente}")
     print('Generazione del piano in corso')      
         
     piano_attuale = llm_call(

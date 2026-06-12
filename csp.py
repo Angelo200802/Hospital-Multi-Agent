@@ -1,9 +1,62 @@
 from ortools.sat.python import cp_model
 from typing import Dict, Any, Tuple
-from .input_type import SchedulerForm, Piano, TurnoAssegnato
+from input_type import SchedulerForm, Piano, TurnoAssegnato
 
 NUM_DAYS = 31       # 7 Dicembre - 7 Gennaio
 NUM_SHIFTS = 3      # 0=Mattina, 1=Pomeriggio, 2=Notte
+
+def genera_feedback_violazioni(piano_llm: Piano, num_days: int = 31) -> list:
+    """
+    Analizza il piano dell'LLM ed estrae i feedback in linguaggio naturale 
+    sui vincoli hard violati.
+    """
+    errori = []
+    
+    for assegnamento in piano_llm.assegnamenti:
+        n = assegnamento.id_dipendente
+        turni = [t.value for t in assegnamento.turni_assegnati] # es. ['M', 'P', 'R', 'N', ...]
+        
+        # CONTROLLO 1: Esattamente 25 turni mensili (Notte vale 2)
+        carico_totale = 0
+        for t in turni:
+            if t in ['M', 'P']: carico_totale += 1
+            elif t == 'N': carico_totale += 2
+            
+        if carico_totale != 25:
+            errori.append(f"Il dipendente {n} ha un carico mensile di {carico_totale} turni invece dei 25 richiesti.")
+            
+        # CONTROLLO 2: Turni consecutivi a cavallo di 2 giorni (Notte -> Mattina)
+        for d in range(num_days - 1):
+            if turni[d] == 'N' and turni[d+1] == 'M':
+                errori.append(f"Turni consecutivi non permessi: il dipendente {n} fa la Notte il giorno {d} e la Mattina il giorno {d+1}.")
+                
+        # CONTROLLO 3: Riposi post-notte (N -> R -> R)
+        for d in range(num_days - 2):
+            if turni[d] == 'N':
+                if turni[d+1] != 'R' or turni[d+2] != 'R':
+                    errori.append(f"Riposo obbligatorio mancato: il dipendente {n} non ha 2 giorni liberi dopo la Notte del giorno {d}.")
+                    
+        # CONTROLLO 4: Max 36 ore settimanali (finestra mobile di 7 giorni, max 6 turni equivalenti)
+        for start_d in range(0, num_days, 7):
+            carico_settimanale = 0
+            
+            # Calcoliamo la fine della settimana, bloccandola a num_days (31) per l'ultima settimana tronca
+            end_d = min(start_d + 7, num_days)
+            
+            for d in range(start_d, end_d):
+                t = turni[d]
+                if t in ['M', 'P']: 
+                    carico_settimanale += 1
+                elif t == 'N': 
+                    carico_settimanale += 2
+                    
+            # Il limite massimo è di 36 ore a settimana (ovvero un carico di 6)
+            if carico_settimanale > 6:
+                errori.append(f"Il dipendente {n} supera le 36 ore settimanali nella settimana fissa dal giorno {start_d} al giorno {end_d - 1}.")
+                
+        # (Opzionale: puoi aggiungere qui il controllo per la copertura minima dei turni [2, 4])
+
+    return errori
 
 def create_hard_constraints(
         std_nurses: list, 
@@ -150,6 +203,7 @@ def solve_hard_constraints(state: SchedulerForm) -> Dict[str, Any]:
     vincoli_non_soddisfatti = []
 
     if status == cp_model.INFEASIBLE:
+        print("Numero di Errori: ",len(genera_feedback_violazioni(piano_llm)))
         return {
             "retry" : True,
             "hard_constraints_valid" : False, 
@@ -179,6 +233,18 @@ if __name__ == "__main__":
     with open(f"{os.getcwd()}/progetto/output/piano_generato.json", "r") as f:
         piano = f.read()
     f.close()
+    piano_di_test_valido = {
+        'A': ['P', 'N', 'R', 'R', 'M', 'M', 'M', 'M', 'M', 'P', 'N', 'R', 'R', 'M', 'N', 'R', 'R', 'P', 'P', 'P', 'P', 'N', 'R', 'R', 'N', 'R', 'R', 'N', 'R', 'R', 'P'],
+        'B': ['P', 'M', 'P', 'M', 'N', 'R', 'R', 'P', 'N', 'R', 'R', 'N', 'R', 'R', 'N', 'R', 'R', 'N', 'R', 'R', 'N', 'R', 'R', 'N', 'R', 'R', 'M', 'P', 'M', 'M', 'N'],
+        'C': ['N', 'R', 'R', 'P', 'P', 'M', 'M', 'N', 'R', 'R', 'N', 'R', 'R', 'P', 'M', 'M', 'P', 'M', 'N', 'R', 'R', 'N', 'R', 'R', 'P', 'M', 'P', 'M', 'N', 'R', 'R'],
+        'D': ['M', 'M', 'P', 'N', 'R', 'R', 'P', 'P', 'N', 'R', 'R', 'P', 'N', 'R', 'R', 'P', 'P', 'N', 'R', 'R', 'N', 'R', 'R', 'P', 'M', 'P', 'N', 'R', 'R', 'N', 'R'],
+        'E': ['N', 'R', 'R', 'P', 'N', 'R', 'R', 'M', 'P', 'M', 'M', 'N', 'R', 'R', 'M', 'P', 'N', 'R', 'R', 'M', 'P', 'P', 'N', 'R', 'R', 'N', 'R', 'R', 'P', 'P', 'M'],
+        'F': ['M', 'N', 'R', 'R', 'M', 'N', 'R', 'R', 'M', 'N', 'R', 'R', 'M', 'P', 'P', 'N', 'R', 'R', 'N', 'R', 'R', 'M', 'N', 'R', 'R', 'M', 'N', 'R', 'R', 'P', 'N'],
+        'G': ['R', 'M', 'N', 'R', 'R', 'P', 'P', 'N', 'R', 'R', 'P', 'M', 'P', 'M', 'P', 'N', 'R', 'R', 'M', 'N', 'R', 'R', 'P', 'P', 'M', 'P', 'M', 'M', 'N', 'R', 'R'],
+        'H': ['R', 'P', 'M', 'N', 'R', 'R', 'N', 'R', 'R', 'N', 'R', 'R', 'M', 'N', 'R', 'R', 'M', 'M', 'P', 'P', 'M', 'P', 'M', 'M', 'P', 'N', 'R', 'R', 'M', 'N', 'R'],
+        'I': ['R', 'M', 'N', 'R', 'R', 'P', 'N', 'R', 'R', 'P', 'P', 'M', 'P', 'N', 'R', 'R', 'N', 'R', 'R', 'M', 'M', 'M', 'M', 'M', 'N', 'R', 'R', 'P', 'P', 'M', 'P'],
+        'J': ['R', 'P', 'M', 'M', 'P', 'N', 'R', 'R', 'P', 'M', 'M', 'P', 'N', 'R', 'R', 'M', 'M', 'P', 'M', 'N', 'R', 'R', 'P', 'N', 'R', 'R', 'P', 'N', 'R', 'R', 'M']
+    }   
     map_turni = {
         'M' : TurnoAssegnato.M,
         'P' : TurnoAssegnato.P,
@@ -192,4 +258,6 @@ if __name__ == "__main__":
     print(piano)
     state.piano_attuale = piano
     out = solve_hard_constraints(state)
+    print("vincoli violati:\n", genera_feedback_violazioni(piano))
+    print(len(genera_feedback_violazioni(piano)))
     print(out)

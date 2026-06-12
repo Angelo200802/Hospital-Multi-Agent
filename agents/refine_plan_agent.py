@@ -25,13 +25,11 @@ Devi raffinare il piano di turni esistente in base al feedback ricevuto dagli al
 - Il piano attuale generato nella precedente iterazione.
 
 ##Strategia di Ragionamento (Passo-Passo):
-1. Analizza il feedback sui vincoli hard violati e identifica esattamente quali vincoli sono stati infranti e in quali parti del piano generato precedentemente.
-2. Analizza le informazioni sul dipendente più sfortunato per capire quali sono le sue preferenze e quali aspetti del piano attuale stanno contribuendo alla sua situazione sfortunata.
-3. Elabora un piano raffinato che corregga i vincoli hard violati, assicurandoti di rispettarli rigorosamente.
-4. Esempi di correzioni:
-    - Se dopo un turno 'N' non ci sono 2 giorni di 'R', inserisci 'R' nei giorni successivi.
-    - Se un dipendente ha più di 25 turni, riduci il numero di turni assegnati a quel dipendente mettendo un numero di 'R' pari al numero di turni in eccesso.
-    - Se un dipendente specializzato è necessario per un turno ma non è assegnato inseriscilo in quel turno
+Verifica per ogni dipendente se sono validi i vincoli hard:
+- Se un dipendente viola il vincolo dei 2 giorni post-notte, assegna due 'R' dopo ogni 'N' per quel dipendente.
+- Se in una settimana non ha un turno di riposo allora inseriscine almeno uno in modo da rispettare il vincolo delle 36 ore settimanali.
+- Se un dipendente fa più/meno di 25 turni, correggi il piano assegnando più turni desiderati o più 'R' in modo da arrivare a 25.
+Verifica per ogni giorno e per ogni turno (M, P, N) che ci siano i numeri minimi di dipendenti richiesti, se non ci sono, assegna più turni a quei giorni fino a soddisfare i requisiti.
 
 ## Il tuo Output:
 Devi restituire un nuovo piano di turni che tenga conto del feedback ricevuto sui vincoli hard violati oppure che migliori la situazione del dipendente più sfortunato.
