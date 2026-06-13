@@ -23,6 +23,9 @@ def verify_hard_constraints_node(state: SchedulerForm) -> SchedulerForm:
     
     sol = solve_hard_constraints(state)
 
+    if not state.best_plan and sol['hard_constraints_valid']:
+        sol['best_plan'] = state.piano_attuale
+
     print("Fine verifica dei vincoli hard.")
 
     return sol
@@ -111,7 +114,7 @@ def evaluate_fairness_node(state: SchedulerForm) -> SchedulerForm:
     peggior_punteggio = punteggi[lavoratore_piu_sfortunato]
 
     print("Fine valutazione della fairness.")
-
+    print(f"Lavoratore più sfortunato è {lavoratore_piu_sfortunato} con un punteggio di {peggior_punteggio}.")
     if not state.dipendente_piu_sfortunato:
         return {
             "fairness_score": peggior_punteggio,

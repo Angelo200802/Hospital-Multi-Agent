@@ -7,3 +7,4 @@ pandas
 google-cloud-aiplatform[tokenization]
 grandalf 
 pillow
+openpyxl
