@@ -62,7 +62,7 @@ def refine_plan_node(state: SchedulerForm) -> SchedulerForm:
         model = GEMINI_MODEL_NAME,
         prompt_variables=prompt_variables,
         structured_output=Piano,
-        thinking_level="height",
+        thinking_level="high",
         temperature=0.0
     )
 
