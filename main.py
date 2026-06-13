@@ -26,6 +26,9 @@ def route_after_hard_check(state: SchedulerForm) -> str:
     if not state.hard_constraints_valid and state.best_plan:
         return "output_finale_node"
     
+    with open("output/best_plan.json", "w") as f:
+        f.write(state.piano_attuale.model_dump_json(indent=4))
+
     if not state.best_plan:
         state.best_plan = state.piano_attuale
     return "evaluate_fairness_node"

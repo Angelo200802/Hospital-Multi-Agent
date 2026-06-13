@@ -25,16 +25,31 @@ Gennaio 2027
 
 SYSTEM_PROMPT = """
 ## Il tuo Ruolo:
-Sei un agente intelligente incaricato di generare un piano di turni per un gruppo di dipendenti di una struttura ospedaliera, tenendo conto delle loro preferenze e dei vincoli operativi. 
+Sei un agente intelligente incaricato di generare un piano di turni per un gruppo di dipendenti di una struttura ospedaliera.
+Devi produrre un piano valido per tutti i dipendenti indicati nell'input.
 
 ## Cosa Devi Fare:
-Il tuo obiettivo è creare/modificare un piano che sia il più possibile equo e soddisfacente per tutti i dipendenti, rispettando al contempo le esigenze dell'organizzazione.
-Il piano deve essere conforme ai vincoli hard e cercare di massimizzare la soddisfazione delle preferenze dei dipendenti estratte dall'Agente di Estrazione Preferenze.
+Genera un piano turni che rispetti prima di tutto i vincoli hard.
+Solo dopo aver rispettato i vincoli hard, prova a soddisfare le preferenze soft dei dipendenti.
+I vincoli hard sono obbligatori.
+Le preferenze soft sono desiderabili, ma possono essere ignorate se entrano in conflitto con i vincoli hard.
 
 {hard_constraints}
 
-## Strategia di Ragionamento (Passo-Passo): 
-Prima di generare l'output finale, devi elaborare mentalmente il piano seguendo questo ordine rigoroso:
+##Strategia di Generazione:
+Segui questa strategia mentale prima di produrre l'output:
+1. Crea una distribuzione iniziale bilanciata dei turni tra i dipendenti.
+2. Assegna prima i turni di notte, perché impongono due giorni successivi di riposo.
+3. Dopo ogni notte, inserisci immediatamente due riposi R, R.
+4. Completa poi i turni di mattina e pomeriggio.
+5. Controlla che ogni giorno abbia copertura sufficiente (almeno 2 dipendenti per turno giornaliero + 1 specializzato se presente).
+6. Controlla che ogni dipendente non superi 36 ore settimanali.
+7. Controlla che ogni dipendente abbia 31 valori.
+8. Controlla che tutti i valori siano solo M, P, N, R.
+9. Solo alla fine prova ad adattare il piano alle preferenze soft.
+
+## Autocontrollo prima dell'output (Passo-Passo): 
+Prima di generare l'output finale, verifica mentalmente il piano:
 1. Per ogni dipendente crea mentalmente una lista di 31 turni (es. Dipendente A -> ['M', 'R', 'N', ...]) che rappresentano i turni assegnati per ogni giorno del mese.
 2. Verifica dei 2 giorni post-notte: Controlla che ogni 'N' sia categoricamente seguito da due 'R'.
 3. Verifica delle 36 ore: Assicurati che nei 7 giorni che compongono la settimana ci sia almeno un turno di riposo per rietrare nel vincolo di 36 ore settimanli.
@@ -42,6 +57,7 @@ Prima di generare l'output finale, devi elaborare mentalmente il piano seguendo 
 5. Verifica che per ogni colonna virtuale (giorno della settimana) ci siano i numeri minimi di dipendenti richiesti:
     - 2 M, 2 P, 2 N se non ci sono specializzati.
     - 1 specializzato + 2 qualsiasi se ci sono specializzati.
+6. **IMPORTANTE** : Non sacrificare **MAI** un vincolo hard per soddisfare una preferenza soft altrimenti **MORIRAI**.
 
 ## Il tuo input:
 - Il calendario da seguire con evidenziati i giorni festivi.
@@ -50,13 +66,12 @@ Prima di generare l'output finale, devi elaborare mentalmente il piano seguendo 
 
 ## Il tuo Output:
 Devi restituire un piano di turni completo per tutti i dipendenti per ogni giorno del periodo di pianificazione (7 Dicembre - 7 Gennaio).
-Per ogni dipendente devi creare una lista di 31 turni (es. Dipendente A -> ['M', 'R', 'N', ...]) che rappresentano i turni assegnati per ogni giorno del mese, dove 'M' = Mattina, 'P' = Pomeriggio, 'N' = Notte, 'R' = Riposo.
 Restituisci il piano nel formato strutturato indicato.
 
 """
 
 HARD_CONSTRAINTS = """
-## Vincoli Hard da Rispettare Assolutamente:
+## Vincoli Hard da Rispettare **AD OGNI FOTTUTISSIMO COSTO**:
 - Ogni dipendente può lavorare al **massimo un turno al giorno**.
 - Non sono permessi turni consecutivi a cavallo di due giorni (es. Notte -> Mattina).
 - Dopo un turno di notte, il dipendente deve avere **almeno 2 giorni di riposo**.
@@ -86,32 +101,23 @@ def generate_plan_node(state: SchedulerForm) -> SchedulerForm:
     if state.piano_attuale:
         prompt_variables["piano_precedente"] = state.piano_attuale.__str__()
         prompts[1] = ("user",prompts[1][1] + "\n##Piano generato precendentemente:\n{piano_precedente}")
+    
+    if state.feedback_errori_hard:
+        prompt_variables["feedback_errori_hard"] = state.feedback_errori_hard.__str__()
+        prompts[1] = ("user",prompts[1][1] + "\n##Feedback errori hard del piano precedente:\n{feedback_errori_hard}")
+    
     print('Generazione del piano in corso')      
         
     piano_attuale = llm_call(
         prompts=prompts,
         model = GEMINI_MODEL_NAME,
         prompt_variables=prompt_variables,
-        use_prod=True,
+        #use_prod=True,
+        thinking_level = "high",
         structured_output=Piano,
-        temperature=0.1
+        temperature=0.0
     )
 
     print(f"Fine generazione del piano.")
 
     return {"piano_attuale": piano_attuale.model_dump()}
-
-
-if __name__ == "__main__":
-    import json
-    with open(f"{os.getcwd()}/progetto/output/preferenze_estratte.json", "r") as f:
-        state = f.read()
-
-    state = {k:v for k,v in json.loads(state).items() if v is not None}
-    state = SchedulerForm.model_validate(state)
-
-    out = generate_plan_node(state)
-    print(out)
-    out['piano_attuale'] = {"assegnamenti" : [{"id_dipendente" : elem["id_dipendente"], "turni" : [t.value for t in elem["turni_assegnati"]]} for elem in out['piano_attuale']['assegnamenti']]}
-    with open(f"{os.getcwd()}/progetto/output/piano_generato.json", "w") as f:
-        f.write(json.dumps(out))

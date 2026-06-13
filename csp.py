@@ -5,16 +5,28 @@ from input_type import SchedulerForm, Piano, TurnoAssegnato
 NUM_DAYS = 31       # 7 Dicembre - 7 Gennaio
 NUM_SHIFTS = 3      # 0=Mattina, 1=Pomeriggio, 2=Notte
 
-def genera_feedback_violazioni(piano_llm: Piano, num_days: int = 31) -> list:
+def genera_feedback_violazioni(piano_llm: Piano, spec_nurses: list = None, num_days: int = 31) -> list:
     """
     Analizza il piano dell'LLM ed estrae i feedback in linguaggio naturale 
     sui vincoli hard violati.
     """
     errori = []
+    if spec_nurses is None:
+        spec_nurses = []
+        
+    # Struttura per contare le presenze per ogni giorno e per ogni turno
+    # Formato: copertura[giorno][turno] = lista_id_dipendenti
+    copertura = {d: {'M': [], 'P': [], 'N': []} for d in range(num_days)}
     
     for assegnamento in piano_llm.assegnamenti:
         n = assegnamento.id_dipendente
         turni = [t.value for t in assegnamento.turni_assegnati] # es. ['M', 'P', 'R', 'N', ...]
+        
+        # Popoliamo il dizionario della copertura per il CONTROLLO 5
+        for d in range(num_days):
+            t = turni[d]
+            if t in ['M', 'P', 'N']:
+                copertura[d][t].append(n)
         
         # CONTROLLO 1: Esattamente 25 turni mensili (Notte vale 2)
         carico_totale = 0
@@ -36,25 +48,44 @@ def genera_feedback_violazioni(piano_llm: Piano, num_days: int = 31) -> list:
                 if turni[d+1] != 'R' or turni[d+2] != 'R':
                     errori.append(f"Riposo obbligatorio mancato: il dipendente {n} non ha 2 giorni liberi dopo la Notte del giorno {d}.")
                     
-        # CONTROLLO 4: Max 36 ore settimanali (finestra mobile di 7 giorni, max 6 turni equivalenti)
+        # CONTROLLO 4: Max 36 ore settimanali (Settimane FISSE, NO finestra mobile)
+        # La funzione range(0, num_days, 7) crea blocchi rigidi: 0-6, 7-13, 14-20, 21-27, 28-30
         for start_d in range(0, num_days, 7):
-            carico_settimanale = 0
+            ore_settimanali = 0
             
-            # Calcoliamo la fine della settimana, bloccandola a num_days (31) per l'ultima settimana tronca
+            # Calcoliamo la fine della settimana fissa (bloccandola a 31 per l'ultima)
             end_d = min(start_d + 7, num_days)
             
             for d in range(start_d, end_d):
                 t = turni[d]
                 if t in ['M', 'P']: 
-                    carico_settimanale += 1
+                    ore_settimanali += 6   # Turno diurno: 6 ore
                 elif t == 'N': 
-                    carico_settimanale += 2
+                    ore_settimanali += 12  # Turno notturno: 12 ore (doppio)
                     
-            # Il limite massimo è di 36 ore a settimana (ovvero un carico di 6)
-            if carico_settimanale > 6:
-                errori.append(f"Il dipendente {n} supera le 36 ore settimanali nella settimana fissa dal giorno {start_d} al giorno {end_d - 1}.")
+            # Il limite massimo è di 36 ore nella settimana fissa
+            if ore_settimanali > 36:
+                errori.append(f"Il dipendente {n} supera le 36 ore settimanali nella settimana fissa dal giorno {start_d} al giorno {end_d - 1} (Totale: {ore_settimanali} ore).")
                 
-        # (Opzionale: puoi aggiungere qui il controllo per la copertura minima dei turni [2, 4])
+
+    # CONTROLLO 5: Verifica della soglia minima di persone nei turni (Copertura)
+    for d in range(num_days):
+        for t in ['M', 'P', 'N']:
+            lavoratori_turno = copertura[d][t]
+            totale_lavoratori = len(lavoratori_turno)
+            
+            if len(spec_nurses) > 0:
+                # Caso d'uso B: Almeno 1 specializzato e almeno 3 persone in totale per turno
+                spec_presenti = sum(1 for dip in lavoratori_turno if dip in spec_nurses)
+                
+                if totale_lavoratori < 3:
+                    errori.append(f"Copertura insufficiente: il Giorno {d} nel turno di '{t}' ci sono solo {totale_lavoratori} lavoratori (minimo richiesto: 3).")
+                if spec_presenti < 1:
+                    errori.append(f"Mancanza specializzati: il Giorno {d} nel turno di '{t}' non ci sono lavoratori specializzati (minimo richiesto: 1).")
+            else:
+                # Caso d'uso A: Almeno 2 lavoratori qualsiasi per turno
+                if totale_lavoratori < 2:
+                    errori.append(f"Copertura insufficiente: il Giorno {d} nel turno di '{t}' ci sono solo {totale_lavoratori} lavoratori (minimo richiesto: 2).")
 
     return errori
 
@@ -196,14 +227,12 @@ def solve_hard_constraints(state: SchedulerForm) -> Dict[str, Any]:
 
     print(f"Status: {status}")
 
-    vincoli_non_soddisfatti = []
-
     if status == cp_model.INFEASIBLE:
-        print("Numero di Errori: ",len(genera_feedback_violazioni(piano_llm)))
+        vincoli_non_soddisfatti = genera_feedback_violazioni(piano_llm, spec_nurses = spec_nurses)
+        print("Numero di Errori: ",len(vincoli_non_soddisfatti))
         return {
-            "retry" : True,
             "hard_constraints_valid" : False, 
-            "feedback_errori_hard" : "/n".join(vincoli_non_soddisfatti)}
+            "feedback_errori_hard" : "\n".join(vincoli_non_soddisfatti)}
 
     elif status == cp_model.OPTIMAL or status == cp_model.FEASIBLE:
         print("Il piano generato rispetta perfettamente tutti i vincoli hard.")
@@ -218,45 +247,3 @@ def solve_hard_constraints(state: SchedulerForm) -> Dict[str, Any]:
             "feedback_errori_hard" : "Impossibile determinare la validità del piano (Errore generico del risolvitore)."
         }
     
-
-if __name__ == "__main__":
-    import json,os
-    with open(f"{os.getcwd()}/progetto/output/preferenze_estratte.json", "r") as f:
-        state = f.read()
-    f.close()
-    state = {k:v for k,v in json.loads(state).items() if v is not None}
-    state = SchedulerForm.model_validate(state)
-    with open(f"{os.getcwd()}/progetto/output/piano_generato.json", "r") as f:
-        piano = f.read()
-    f.close()
-    piano_di_test_valido = {
-        'A': ['N', 'R', 'R', 'P', 'P', 'M', 'M', 'M', 'M', 'N', 'R', 'R', 'N', 'R', 'R', 'P', 'R', 'M', 'P', 'P', 'N', 'R', 'R', 'R', 'M', 'N', 'R', 'R', 'P', 'P', 'N'], 
-        'B': ['P', 'P', 'N', 'R', 'R', 'R', 'N', 'R', 'R', 'P', 'R', 'M', 'N', 'R', 'R', 'N', 'R', 'R', 'P', 'P', 'M', 'P', 'P', 'M', 'N', 'R', 'R', 'P', 'M', 'M', 'N'], 
-        'C': ['M', 'R', 'P', 'P', 'P', 'N', 'R', 'R', 'P', 'P', 'P', 'N', 'R', 'R', 'P', 'M', 'P', 'N', 'R', 'R', 'P', 'M', 'N', 'R', 'R', 'M', 'N', 'R', 'R', 'N', 'R'], 
-        'D': ['M', 'R', 'P', 'M', 'M', 'R', 'N', 'R', 'R', 'M', 'N', 'R', 'R', 'M', 'M', 'P', 'M', 'N', 'R', 'R', 'P', 'P', 'N', 'R', 'R', 'P', 'M', 'M', 'P', 'M', 'M'], 
-        'E': ['M', 'N', 'R', 'R', 'M', 'P', 'P', 'N', 'R', 'R', 'P', 'P', 'P', 'P', 'N', 'R', 'R', 'M', 'N', 'R', 'R', 'M', 'M', 'M', 'M', 'M', 'R', 'M', 'N', 'R', 'R'], 
-        'F': ['M', 'N', 'R', 'R', 'P', 'N', 'R', 'R', 'N', 'R', 'R', 'P', 'P', 'N', 'R', 'R', 'R', 'P', 'N', 'R', 'R', 'N', 'R', 'R', 'P', 'M', 'M', 'P', 'P', 'M', 'N'], 
-        'G': ['M', 'N', 'R', 'R', 'P', 'M', 'P', 'M', 'M', 'M', 'R', 'P', 'M', 'P', 'M', 'N', 'R', 'R', 'R', 'P', 'N', 'R', 'R', 'P', 'P', 'P', 'P', 'N', 'R', 'R', 'P'], 
-        'H': ['P', 'M', 'M', 'N', 'R', 'R', 'P', 'P', 'M', 'M', 'P', 'P', 'M', 'R', 'P', 'R', 'P', 'P', 'M', 'N', 'R', 'R', 'P', 'P', 'R', 'M', 'M', 'N', 'R', 'R', 'P'], 
-        'I': ['N', 'R', 'R', 'P', 'P', 'M', 'P', 'P', 'P', 'P', 'M', 'M', 'R', 'M', 'R', 'M', 'N', 'R', 'R', 'M', 'P', 'M', 'M', 'P', 'N', 'R', 'R', 'P', 'N', 'R', 'R'], 
-        'J': ['N', 'R', 'R', 'M', 'N', 'R', 'R', 'R', 'M', 'M', 'N', 'R', 'R', 'M', 'P', 'M', 'N', 'R', 'R', 'M', 'M', 'P', 'M', 'M', 'P', 'N', 'R', 'R', 'M', 'N', 'R'], 
-        'K': ['P', 'M', 'P', 'N', 'R', 'R', 'M', 'P', 'N', 'R', 'R', 'N', 'R', 'R', 'N', 'R', 'R', 'P', 'P', 'N', 'R', 'R', 'M', 'N', 'R', 'R', 'P', 'M', 'M', 'R', 'N'], 
-        'L': ['P', 'P', 'M', 'P', 'N', 'R', 'R', 'R', 'P', 'N', 'R', 'R', 'R', 'N', 'R', 'R', 'N', 'R', 'R', 'M', 'P', 'N', 'R', 'R', 'M', 'M', 'M', 'M', 'M', 'M', 'N'], 
-        'M': ['M', 'R', 'N', 'R', 'R', 'P', 'M', 'N', 'R', 'R', 'M', 'M', 'P', 'P', 'R', 'M', 'M', 'M', 'M', 'M', 'P', 'M', 'M', 'N', 'R', 'R', 'N', 'R', 'R', 'P', 'M']
-    }
-  
-    map_turni = {
-        'M' : TurnoAssegnato.M,
-        'P' : TurnoAssegnato.P,
-        'N' : TurnoAssegnato.N,
-        'R' : TurnoAssegnato.R
-    }
-    piano = json.loads(piano)['piano_attuale']
-    for elem in piano['assegnamenti']:
-        elem['turni_assegnati'] = [map_turni[v] for v in piano_di_test_valido[elem['id_dipendente']]]
-    piano = Piano.model_validate(piano)
-    print(piano)
-    state.piano_attuale = piano
-    out = solve_hard_constraints(state)
-    print("vincoli violati:\n", genera_feedback_violazioni(piano))
-    print(out)

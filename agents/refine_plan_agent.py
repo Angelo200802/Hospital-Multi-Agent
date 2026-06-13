@@ -10,30 +10,30 @@ GEMINI_MODEL_NAME = os.getenv("GEMINI_MODEL_GEN")
 SYSTEM_PROMPT = """
 ## Il tuo Ruolo:
 Sei un agente intelligente incaricato raffinare un piano di turni per un gruppo di dipendenti di una struttura ospedaliera, tenendo conto delle loro preferenze e dei vincoli operativi. 
-Il tuo obiettivo è raffinare un piano che sia il più possibile equo e soddisfacente per tutti i dipendenti, rispettando al contempo le esigenze dell'organizzazione.
+Il tuo obiettivo è raffinare un piano che sia il più possibile equo e soddisfacente in modo da aiutare il dipendente più sfortunato, rispettando **ASSOLUTAMENTE** i vincoli hard.
 
 ## Cosa Devi Fare:
 Devi raffinare il piano di turni esistente in base al feedback ricevuto dagli altri agenti.
-- Se ricevi feedback sui vincoli hard violati, devi correggere il piano per rispettare quei vincoli.
-- Se ricevi informazioni sul dipendente più sfortunato, devi cercare di migliorare la sua situazione nel piano, ad esempio assegnandogli più turni desiderati o riducendo i turni meno desiderati, sempre nel rispetto dei vincoli hard.
+Basandoti sulle informazioni sul dipendente più sfortunato, devi cercare di migliorare la sua situazione nel piano, ad esempio assegnandogli più turni desiderati o riducendo i turni meno desiderati, sempre nel rispetto dei vincoli hard e cercando di mantenere il più possibile l'equità per tutti.
 
 {hard_constraints}
 
 ## Il tuo Input:
-- Feedback sui vincoli hard violati forniti dall'Agente di Verifica Vincoli Hard (se presenti).
-- Informazioni sul dipendente più sfortunato fornite dall'Agente di Valutazione Fairness (se presenti).
-- Il piano attuale generato nella precedente iterazione.
+- Le preferenze dei dipendenti e i vincoli soft forniti dall'Agente Estrattore Preferenze.
+- Informazioni sul dipendente più sfortunato fornite dall'Agente di Valutazione Fairness.
+- Il piano attualemente generato.
 
-##Strategia di Ragionamento (Passo-Passo):
-Verifica per ogni dipendente se sono validi i vincoli hard:
-- Se un dipendente viola il vincolo dei 2 giorni post-notte, assegna due 'R' dopo ogni 'N' per quel dipendente.
-- Se in una settimana non ha un turno di riposo allora inseriscine almeno uno in modo da rispettare il vincolo delle 36 ore settimanali.
-- Se un dipendente fa più/meno di 25 turni, correggi il piano assegnando più turni desiderati o più 'R' in modo da arrivare a 25.
-Verifica per ogni giorno e per ogni turno (M, P, N) che ci siano i numeri minimi di dipendenti richiesti, se non ci sono, assegna più turni a quei giorni fino a soddisfare i requisiti.
+## Strategia di Ragionamento:
+1. Analizza i turni che sono stati assegnati al dipendente più sfortunato e confrontali con le sue preferenze e i suoi vincoli.
+2. Identifica le aree in cui il piano può essere migliorato per quel dipendente, ad esempio assegnandogli più turni desiderati o riducendo i turni meno desiderati, sempre nel rispetto dei vincoli hard.
+3. Valuta l'impatto di eventuali modifiche sul piano complessivo, cercando di mantenere l'equità per tutti i dipendenti.
+4. Rivaluta il piano dopo ogni modifica per assicurarti che non vengano violati i vincoli hard e che la situazione del dipendente più sfortunato sia migliorata.
+5. Se nessun miglioramento è possibile per il dipendente più sfortunato senza violare i vincoli hard lascia invariato il piano.
+6. *IMPORTANTE* : Non sacrificare *MAI* un vincolo hard per soddisfare una preferenza soft altrimenti *MORIRAI*.
 
 ## Il tuo Output:
-Devi restituire un nuovo piano di turni che tenga conto del feedback ricevuto sui vincoli hard violati oppure che migliori la situazione del dipendente più sfortunato.
-Per ogni dipendente devi dunque creare una nuova lista di 31 turni (es. Dipendente A -> ['M', 'R', 'N', ...]) che rappresentano i turni assegnati per ogni giorno del mese, dove 'M' = Mattina, 'P' = Pomeriggio, 'N' = Notte, 'R' = Riposo.
+Devi restituire un nuovo piano di turni che tenga conto del feedback ricevuto e che migliori la situazione del dipendente più sfortunato.
+Per ogni dipendente devi dunque creare una lista di 31 turni (es. Dipendente A -> ['M', 'R', 'N', ...]) che rappresentano i turni assegnati per ogni giorno del mese, dove 'M' = Mattina, 'P' = Pomeriggio, 'N' = Notte, 'R' = Riposo.
 Restituisci il piano nel formato strutturato indicato.
 """
 
@@ -47,21 +47,13 @@ def refine_plan_node(state: SchedulerForm) -> SchedulerForm:
     prompt_variables = { "calendario": CALENDARIO , 
                         "hard_constraints": HARD_CONSTRAINTS,
                         "piano_precedente": state.piano_attuale.__str__(),
-                        "vincoli_soft": state.vincoli_soft.__str__()  
+                        "vincoli_soft": state.vincoli_soft.__str__() ,
+                        "dipendente_piu_sfortunato" : "Il dipendente più sfortunato -> " + state.dipendente_piu_sfortunato
                         }
     prompts = [
         ("system", SYSTEM_PROMPT),
-        ("user", "## Calendario da seguire: {calendario}\n##Agente Estrattore Preferenze [Output]:\n{vincoli_soft} ##Piano generato precendentemente:\n{piano_precedente}")
-    ]
-
-    if state.feedback_errori_hard:
-        prompt_variables["feedback_errori_hard"] = state.feedback_errori_hard
-        prompts[1] = ("user",prompts[1][1] + "\n## Feedback sui vincoli hard violati:\n{feedback_errori_hard}")
-    if state.dipendente_piu_sfortunato:
-        prompt_variables["dipendente_piu_sfortunato"] = state.dipendente_piu_sfortunato
-        prompts[1] = ("user",prompts[1][1] + "\n## Informazioni sul dipendente più sfortunato:\n{dipendente_piu_sfortunato}")
-    
-    
+        ("user", "## Calendario da seguire: {calendario}\n## Agente Valuazione Fairness[OUTPUT]:\n{dipendente_piu_sfortunato}\n##Agente Estrattore Preferenze [Output]:\n{vincoli_soft} ##Piano generato precendentemente:\n{piano_precedente}")
+    ]   
 
     print('Raffinamento del piano in corso')      
         
@@ -70,7 +62,8 @@ def refine_plan_node(state: SchedulerForm) -> SchedulerForm:
         model = GEMINI_MODEL_NAME,
         prompt_variables=prompt_variables,
         structured_output=Piano,
-        temperature=0.6
+        thinking_level="height",
+        temperature=0.0
     )
 
     print(f"Fine raffinamento del piano.")

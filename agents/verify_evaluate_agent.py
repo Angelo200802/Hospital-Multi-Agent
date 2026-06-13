@@ -34,7 +34,7 @@ def evaluate_fairness_node(state: SchedulerForm) -> SchedulerForm:
     
     punteggi = {}
     giorni = [giorno.value for giorno in GiornoSettimana]
-    turni_map = {'M': 'mattina', 'P': 'pomeriggio', 'N': 'notte'}
+    turni_map = {'M': 'mattina', 'P': 'pomeriggio', 'N': 'notte', "R": 'riposo'}
 
     for dipendente in state.vincoli_soft.preferenze_dipendenti:
         n = dipendente.id_dipendente
@@ -61,7 +61,7 @@ def evaluate_fairness_node(state: SchedulerForm) -> SchedulerForm:
 
         for d in range(31):
             turni = turni_assegnati[d]
-            if turni == 'R':
+            if turni.value == 'R':
                 continue 
                 
             giorno_settimana = giorni[d % 7]
@@ -75,7 +75,7 @@ def evaluate_fairness_node(state: SchedulerForm) -> SchedulerForm:
                     continue
 
                 turni_richiesti = [t.value if hasattr(t, 'value') else t for t in req.turno]
-                turno_assegnato_match = (turni_map[turni] in turni_richiesti) or ("tutti" in turni_richiesti)
+                turno_assegnato_match = (turni_map[turni.value] in turni_richiesti) or ("tutti" in turni_richiesti)
 
                 if req.desiderato == False and turno_assegnato_match:
                     penalita += 15
@@ -90,7 +90,7 @@ def evaluate_fairness_node(state: SchedulerForm) -> SchedulerForm:
             if richiesta_match:
                 continue
             
-            if turni_map[turni] in turni_no:
+            if turni_map[turni.value] in turni_no:
                 penalita += 10
                 
             if giorno_settimana in giorni_no:
@@ -101,7 +101,7 @@ def evaluate_fairness_node(state: SchedulerForm) -> SchedulerForm:
                 
             if d > 0 and turni_assegnati[d-1] != 'R':
                 turno_ieri = turni_assegnati[d-1]
-                if turni_map[turni] in [t.value for t in dipendente.tolleranza_turni_consecutivi] and turni_map[turni] == turni_map[turno_ieri]:
+                if turni_map[turni.value] in [t.value for t in dipendente.tolleranza_turni_consecutivi] and turni_map[turni.value] == turni_map[turno_ieri.value]:
                     penalita += 20
 
         punteggi[n] = penalita
@@ -116,7 +116,6 @@ def evaluate_fairness_node(state: SchedulerForm) -> SchedulerForm:
         return {
             "fairness_score": peggior_punteggio,
             "dipendente_piu_sfortunato": lavoratore_piu_sfortunato,
-            "retry" : True ,
             "terminazione_raggiunta": False    
         }
     
@@ -125,8 +124,6 @@ def evaluate_fairness_node(state: SchedulerForm) -> SchedulerForm:
             "best_plan": state.piano_attuale,
             "fairness_score": peggior_punteggio,
             "dipendente_piu_sfortunato": lavoratore_piu_sfortunato,
-            "retry" : False,
             "terminazione_raggiunta": True
         }
-    
     

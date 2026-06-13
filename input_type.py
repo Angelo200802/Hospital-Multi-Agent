@@ -139,7 +139,6 @@ class SchedulerForm(BaseModel):
     preferenze_valide: PreferenzeValidate = None
 
     # Fase 2/4: Bozza del piano
-    retry: bool = False
     best_plan: Piano = None
     piano_attuale: Piano = None    
     
