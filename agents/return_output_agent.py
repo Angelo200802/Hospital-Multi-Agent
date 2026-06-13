@@ -51,3 +51,5 @@ def return_output_node(state: SchedulerForm) -> SchedulerForm:
         print("Errore: assicurati di aver installato la libreria 'openpyxl' (pip install openpyxl pandas) per esportare in Excel.")
 
     print("Piano finale preparato e salvato in output.")
+
+

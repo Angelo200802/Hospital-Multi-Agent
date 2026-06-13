@@ -115,12 +115,6 @@ def evaluate_fairness_node(state: SchedulerForm) -> SchedulerForm:
 
     print("Fine valutazione della fairness.")
     print(f"Lavoratore più sfortunato è {lavoratore_piu_sfortunato} con un punteggio di {peggior_punteggio}.")
-    if not state.dipendente_piu_sfortunato:
-        return {
-            "fairness_score": peggior_punteggio,
-            "dipendente_piu_sfortunato": lavoratore_piu_sfortunato,
-            "terminazione_raggiunta": False    
-        }
     
     if peggior_punteggio < state.fairness_score:
         return {
@@ -128,5 +122,11 @@ def evaluate_fairness_node(state: SchedulerForm) -> SchedulerForm:
             "fairness_score": peggior_punteggio,
             "dipendente_piu_sfortunato": lavoratore_piu_sfortunato,
             "terminazione_raggiunta": True
+        }
+    
+    return {
+            "fairness_score": peggior_punteggio,
+            "dipendente_piu_sfortunato": lavoratore_piu_sfortunato,
+            "terminazione_raggiunta": False    
         }
     
