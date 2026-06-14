@@ -132,23 +132,27 @@ class Piano(BaseModel):
 class SchedulerForm(BaseModel):
     # Input iniziale
     input: str
-    
+    start_time: float = None
     # Fase 1a/4: Estrazione preferenze
     vincoli_soft: VincoliStrutturati = None      
     # Fase 1b/4: Verifica preferenze estratte
     preferenze_valide: PreferenzeValidate = None
-
+    n_iter_correzioni: int = 0
+    
     # Fase 2/4: Bozza del piano
     best_plan: Piano = None
     piano_attuale: Piano = None    
-    
+    n_iter_piano: int = 0
+   
     # Fase 3a/4: Verifica vincoli Hard
     hard_constraints_valid: bool = None    
     feedback_errori_hard: str = None        
+    n_iter_raffinazioni : int = 0
     
     # Fase 3b/4: Valutazione Fairness
-    dipendente_piu_sfortunato: str = None  
-    fairness_score: float = None             
+    dipendente_piu_sfortunato: list[str] = []  
+    fairness_score: dict[str, float] = None             
 
     # Criteri di terminazione
+    condizione_di_stop : str = None
     terminazione_raggiunta: bool = None     

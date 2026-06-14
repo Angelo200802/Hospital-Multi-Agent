@@ -48,7 +48,7 @@ def refine_plan_node(state: SchedulerForm) -> SchedulerForm:
                         "hard_constraints": HARD_CONSTRAINTS,
                         "piano_precedente": state.piano_attuale.__str__(),
                         "vincoli_soft": state.vincoli_soft.__str__() ,
-                        "dipendente_piu_sfortunato" : "Il dipendente più sfortunato -> " + state.dipendente_piu_sfortunato
+                        "dipendente_piu_sfortunato" : "Il dipendente più sfortunato -> " + state.dipendente_piu_sfortunato[-1]
                         }
     prompts = [
         ("system", SYSTEM_PROMPT),
@@ -68,4 +68,4 @@ def refine_plan_node(state: SchedulerForm) -> SchedulerForm:
 
     print(f"Fine raffinamento del piano.")
 
-    return {"piano_attuale": piano_attuale.model_dump()}
+    return {"piano_attuale": piano_attuale.model_dump(), "n_iter_raffinazioni": state.n_iter_raffinazioni + 1}

@@ -8,3 +8,4 @@ google-cloud-aiplatform[tokenization]
 grandalf 
 pillow
 openpyxl
+numpy

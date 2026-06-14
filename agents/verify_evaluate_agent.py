@@ -1,6 +1,7 @@
 from input_type import SchedulerForm, GiornoSettimana
 from csp import solve_hard_constraints
 from datetime import date, timedelta
+import numpy as np
 
 def get_data_string(d: int) -> str:
     """
@@ -25,7 +26,8 @@ def verify_hard_constraints_node(state: SchedulerForm) -> SchedulerForm:
 
     if not state.best_plan and sol['hard_constraints_valid']:
         sol['best_plan'] = state.piano_attuale
-
+    if state.best_plan and not sol['hard_constraints_valid']:
+        sol["condizione_di_stop"] = "Vincoli Hard Violati"
     print("Fine verifica dei vincoli hard.")
 
     return sol
@@ -116,17 +118,34 @@ def evaluate_fairness_node(state: SchedulerForm) -> SchedulerForm:
     print("Fine valutazione della fairness.")
     print(f"Lavoratore più sfortunato è {lavoratore_piu_sfortunato} con un punteggio di {peggior_punteggio}.")
     
-    if peggior_punteggio < state.fairness_score:
+    if peggior_punteggio > max(state.fairness_score.values()):
         return {
-            "best_plan": state.piano_attuale,
-            "fairness_score": peggior_punteggio,
-            "dipendente_piu_sfortunato": lavoratore_piu_sfortunato,
+            "condizione_di_stop": "Fairness Score Peggiorato",
             "terminazione_raggiunta": True
         }
+    if peggior_punteggio < max(state.fairness_score.values()):
+        state.dipendente_piu_sfortunato.append(lavoratore_piu_sfortunato)
+        return {
+                "fairness_score": punteggi,
+                "best_plan": state.piano_attuale,  
+                "dipendente_piu_sfortunato": state.dipendente_piu_sfortunato,
+                "terminazione_raggiunta": False    
+            }
     
-    return {
-            "fairness_score": peggior_punteggio,
-            "dipendente_piu_sfortunato": lavoratore_piu_sfortunato,
-            "terminazione_raggiunta": False    
+    media_nuovi_punteggi = np.mean(list(punteggi.values()))
+    media_vecchi_punteggi = np.mean(list(state.fairness_score.values()))
+
+    if media_nuovi_punteggi >= media_vecchi_punteggi:
+        return {
+            "condizione_di_stop": "Fairness Score Non Migliorato",
+            "terminazione_raggiunta": True
         }
+    if media_nuovi_punteggi < media_vecchi_punteggi:
+        state.dipendente_piu_sfortunato.append(lavoratore_piu_sfortunato)
+        return {
+                "fairness_score": punteggi,
+                "best_plan": state.piano_attuale,  
+                "dipendente_piu_sfortunato": state.dipendente_piu_sfortunato,
+                "terminazione_raggiunta": False    
+            }
     

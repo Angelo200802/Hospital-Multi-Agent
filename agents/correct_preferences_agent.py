@@ -74,4 +74,4 @@ def correct_preferences_node(state: SchedulerForm):
     nuove_preferenze = VincoliStrutturati(preferenze_dipendenti=nuovi_vincoli)
     
     
-    return {"vincoli_soft": nuove_preferenze.model_dump()}
+    return {"vincoli_soft": nuove_preferenze.model_dump(), "n_iter_correzioni": state.n_iter_correzioni + 1}

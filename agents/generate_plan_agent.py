@@ -120,4 +120,4 @@ def generate_plan_node(state: SchedulerForm) -> SchedulerForm:
 
     print(f"Fine generazione del piano.")
 
-    return {"piano_attuale": piano_attuale.model_dump()}
+    return {"piano_attuale": piano_attuale.model_dump(), "n_iter_piano": state.n_iter_piano + 1}

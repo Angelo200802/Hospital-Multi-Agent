@@ -8,7 +8,7 @@ from agents.refine_plan_agent import refine_plan_node
 from agents.verify_evaluate_agent import verify_hard_constraints_node, evaluate_fairness_node
 from agents.return_output_agent import return_output_node
 from dotenv import load_dotenv
-import os, langchain
+import os, langchain, time
 
 langchain.debug = True
 
@@ -124,7 +124,7 @@ if __name__ == "__main__":
         print("File di input caricato correttamente.")
         
         print("Inizio del processo di generazione del piano...")
-        piano = app.invoke({"input":input_iniziale})
+        piano = app.invoke({"input":input_iniziale, "start_time": time.time()})
         print("Piano finale generato:\n", piano.get("piano_attuale"))
     else:
         raise ValueError("Il nome del file di input non è specificato nelle variabili d'ambiente")

@@ -1,7 +1,7 @@
 from input_type import SchedulerForm, TurnoAssegnato
 from datetime import date, timedelta
 import pandas as pd
-import os, time
+import os, time, json
 
 
 def return_output_node(state: SchedulerForm) -> SchedulerForm:
@@ -49,7 +49,23 @@ def return_output_node(state: SchedulerForm) -> SchedulerForm:
         df.to_excel(f"{os.getcwd()}/output/piano_di_turni_{time.time()}.xlsx", index_label="Fascia Oraria")
     except ImportError:
         print("Errore: assicurati di aver installato la libreria 'openpyxl' (pip install openpyxl pandas) per esportare in Excel.")
-
+        return
+    
+    try:
+        with open(f"{os.getcwd()}/output/audit_log_{time.time()}.json", "w") as f:
+            f.write(json.dumps({
+                "dipendenti": [a.id_dipendente for a in piano.assegnamenti],
+                "iterazioni_correzioni_preferenze": state.n_iter_correzioni,
+                "iterazioni_piano": state.n_iter_piano,
+                "iterazioni_raffinazioni": state.n_iter_raffinazioni,
+                "tempo_totale": time.time() - state.start_time if state.start_time else None,
+                "fairness_score": state.fairness_score,
+                "condizione_di_stop": state.condizione_di_stop  
+            }, indent=4))
+    except Exception as e:
+        print(f"Errore durante il salvataggio del log di audit: {e}")
+        return
+    
     print("Piano finale preparato e salvato in output.")
 
 
