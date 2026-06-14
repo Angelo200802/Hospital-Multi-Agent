@@ -60,6 +60,7 @@ def return_output_node(state: SchedulerForm) -> SchedulerForm:
                 "iterazioni_raffinazioni": state.n_iter_raffinazioni,
                 "tempo_totale": time.time() - state.start_time if state.start_time else None,
                 "fairness_score": state.fairness_score,
+                "dipendente_piu_sfortunato": state.dipendente_piu_sfortunato,
                 "condizione_di_stop": state.condizione_di_stop  
             }, indent=4))
     except Exception as e:
