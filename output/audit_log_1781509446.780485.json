@@ -1,0 +1,52 @@
+{
+    "dipendenti": [
+        "A",
+        "B",
+        "C",
+        "D",
+        "E",
+        "F",
+        "G",
+        "H",
+        "I",
+        "J",
+        "K",
+        "L",
+        "M",
+        "N",
+        "O",
+        "P",
+        "Q",
+        "R",
+        "S"
+    ],
+    "iterazioni_correzioni_preferenze": 1,
+    "iterazioni_piano": 5,
+    "iterazioni_raffinazioni": 1,
+    "tempo_totale": 2280.049247741699,
+    "fairness_score": {
+        "G": 90.0,
+        "S": 50.0,
+        "A": 20.0,
+        "B": 0.0,
+        "C": 15.0,
+        "D": 120.0,
+        "E": 20.0,
+        "F": 0.0,
+        "H": 0.0,
+        "I": 20.0,
+        "J": 15.0,
+        "K": 15.0,
+        "L": 0.0,
+        "M": 60.0,
+        "N": 20.0,
+        "O": 50.0,
+        "P": 0.0,
+        "Q": 0.0,
+        "R": 0.0
+    },
+    "dipendente_piu_sfortunato": [
+        "D"
+    ],
+    "condizione_di_stop": "Fairness Score Non Migliorato"
+}

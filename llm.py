@@ -4,7 +4,9 @@ from dotenv import load_dotenv
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_google_genai import ChatGoogleGenerativeAI
 from pydantic import BaseModel
+from tenacity import retry, wait_exponential, stop_after_attempt, retry_if_exception
 
+load_dotenv()
 load_dotenv()
 GEMINI_MODEL_NAME = os.getenv("GEMINI_MODEL")
 
@@ -35,6 +37,16 @@ def create_llm(api_key: str,
 
     return llm
 
+def is_rate_limit_or_server_error(exception: Exception) -> bool:
+    """
+    Funzione di filtro per capire se l'errore è dovuto a limiti di quota (429) 
+    o indisponibilità del server (503). In questi casi vogliamo fare il retry.
+    Se l'errore è un errore di sintassi, API key invalida (400, 403), non facciamo retry.
+    """
+    err_msg = str(exception).lower()
+    return "429" in err_msg or "resource_exhausted" in err_msg or "503" in err_msg or "unavailable" in err_msg
+
+
 def llm_call(prompts: List[Tuple[str, str]],
              model:str = GEMINI_MODEL_NAME,
              prompt_variables: Optional[Dict[str, Any]] = None,
@@ -46,6 +58,17 @@ def llm_call(prompts: List[Tuple[str, str]],
     
     prompts_template = ChatPromptTemplate.from_messages(prompts)
     inputs = prompt_variables if prompt_variables else {}
+
+    @retry(
+        wait=wait_exponential(multiplier=1, min=2, max=10),
+        stop=stop_after_attempt(3),  # Prova al massimo 3 volte sulla stessa chiave prima di arrenderti
+        retry=retry_if_exception(is_rate_limit_or_server_error),
+        reraise=True, # Rilancia l'eccezione se finisce i tentativi, così il ciclo for passa alla chiave successiva
+        before_sleep=lambda retry_state: print(f"⏳ Errore temporaneo. Applico backoff esponenziale: attendo prima del tentativo {retry_state.attempt_number + 1}...")
+    )
+    def _execute_chain_with_retry(llm_instance):
+        chain = prompts_template | llm_instance
+        return chain.invoke(inputs)
 
     if use_test and GEMINI_API_POOL:
         for i, api_key in enumerate(GEMINI_API_POOL):
@@ -59,13 +82,12 @@ def llm_call(prompts: List[Tuple[str, str]],
                     thinking_level=thinking_level,
                     structured_output=structured_output
                 )
-                #print(f"SystemPrompt:\n{prompts_template.format_messages(**inputs)[0].content}")
-                #print(f"UserPrompt:\n{prompts_template.format_messages(**inputs)[1].content}")
-                chain = prompts_template | llm
-                return chain.invoke(inputs)
+
+                return _execute_chain_with_retry(llm)
                 
             except Exception as e:
-                print(f"⚠️ Chiave {i+1} fallita. Errore: {e}")
+                print(f"⚠️ Chiave {i+1} definitivamente fallita o limite superato dopo i tentativi. Errore finale: {e}")
+    
     if use_prod:
         llm = create_llm(
             api_key=GEMINI_API_PROD, 
