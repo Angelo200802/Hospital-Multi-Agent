@@ -1,16 +1,10 @@
-# 🏥 Progetto AI - Scheduler Turni Ospedalieri
+# 🏥 Smart Scheduler
 
-Questo progetto implementa un flusso multi-agente per la pianificazione dei turni ospedalieri, combinando:
+## 1. Introduzione
 
-- estrazione semantica delle preferenze da testo naturale (LLM),
-- generazione/raffinamento iterativo del piano,
-- verifica dei vincoli hard con approccio simbolico,
-- valutazione della fairness del risultato.
+Il presente progetto illustra la progettazione e lo sviluppo di un sistema multi-agente avanzato nato per automatizzare e ottimizzare la pianificazione dei turni all'interno di un contesto ospedaliero. L'obiettivo fondamentale del sistema è generare turnazioni bilanciate che rispettino rigorosamente i requisiti istituzionali e legali (vincoli *hard*), tenendo contemporaneamente conto delle preferenze personali e del benessere del personale sanitario per garantire un'equa distribuzione del carico di lavoro (vincoli *soft*).
 
-L’orchestrazione è gestita con `LangGraph`.
-
----
-
+Nelle sezioni successive verranno discusse nel dettaglio le **scelte progettuali** che hanno guidato lo sviluppo e verranno analizzati i risultati ottenuti in due scenari applicativi distinti: il **Caso d'Uso A** (gestione di lavoratori standard) e il **Caso d'Uso B** (che introduce requisiti di presidio per lavoratori specializzati).
 ## Struttura del progetto
 
 - `main.py`: entrypoint del workflow.
@@ -84,15 +78,6 @@ python main.py
 ```
 
 Il workflow leggerà il file input indicato in `main.py` e stamperà il risultato finale.
-
----
-# Smart Scheduler
-
-## 1. Introduzione
-
-Il presente progetto illustra la progettazione e lo sviluppo di un sistema multi-agente avanzato nato per automatizzare e ottimizzare la pianificazione dei turni all'interno di un contesto ospedaliero. L'obiettivo fondamentale del sistema è generare turnazioni bilanciate che rispettino rigorosamente i requisiti istituzionali e legali (vincoli *hard*), tenendo contemporaneamente conto delle preferenze personali e del benessere del personale sanitario per garantire un'equa distribuzione del carico di lavoro (vincoli *soft*).
-
-Nelle sezioni successive verranno discusse nel dettaglio le **scelte progettuali** che hanno guidato lo sviluppo e verranno analizzati i risultati ottenuti in due scenari applicativi distinti: il **Caso d'Uso A** (gestione di lavoratori standard) e il **Caso d'Uso B** (che introduce requisiti di presidio per lavoratori specializzati).
 
 ## 2. Struttura del Flusso
 
