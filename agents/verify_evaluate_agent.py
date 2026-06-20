@@ -102,7 +102,7 @@ def evaluate_fairness_node(state: SchedulerForm) -> SchedulerForm:
                 penalita += 10
                 
             if is_weekend and "weekend" in turni_no:
-                penalita += 15
+                penalita += 10
                 
             if d > 0 and turni_assegnati[d-1] != 'R':
                 turno_ieri = turni_assegnati[d-1]
