@@ -13,7 +13,8 @@ import os, langchain, time
 langchain.debug = True
 
 load_dotenv()
-INPUT_FILE_NAME = os.getenv("INPUT_FILE_NAME")
+PREFERENCES_FILE = os.getenv("PREFERENCES_FILE")
+HARD_CONSTRAINTS_FILE = os.getenv("HARD_CONSTRAINTS_FILE")
 
 def route_after_hard_check(state: SchedulerForm) -> str:
     """
@@ -115,16 +116,22 @@ def get_graph(app):
 if __name__ == "__main__":
     app = build_workflow()
     get_graph(app)
-    if INPUT_FILE_NAME:
-        path = f"{os.getcwd()}/input/{INPUT_FILE_NAME}"
+    if PREFERENCES_FILE:
+        path = f"{os.getcwd()}/input/{PREFERENCES_FILE}"
         
         print("Caricamento del file di input...")
         with open(path, "r") as f:
             input_iniziale = f.read()
         print("File di input caricato correttamente.")
-        
+    if HARD_CONSTRAINTS_FILE:
+        path = f"{os.getcwd()}/input/{HARD_CONSTRAINTS_FILE}"
+        print("Caricamento del file dei vincoli hard...")
+        with open(path, "r") as f:
+            hard_constraints = f.read()
+        print("File dei vincoli hard caricato correttamente.")
+    if PREFERENCES_FILE and HARD_CONSTRAINTS_FILE:   
         print("Inizio del processo di generazione del piano...")
-        piano = app.invoke({"input":input_iniziale, "start_time": time.time()})
+        piano = app.invoke({"input":{ "preferences": input_iniziale, "hard_constraints": hard_constraints }, "start_time": time.time()})
         print("Piano finale generato:\n", piano.get("piano_attuale"))
     else:
         raise ValueError("Il nome del file di input non è specificato nelle variabili d'ambiente")

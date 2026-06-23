@@ -131,7 +131,7 @@ class Piano(BaseModel):
 
 class SchedulerForm(BaseModel):
     # Input iniziale
-    input: str
+    input: dict[str, str]
     start_time: float = None
     # Fase 1a/4: Estrazione preferenze
     vincoli_soft: VincoliStrutturati = None      

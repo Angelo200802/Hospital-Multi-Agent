@@ -1,5 +1,5 @@
 from input_type import SchedulerForm, GiornoSettimana
-from csp import solve_hard_constraints
+#from csp import solve_hard_constraints
 from datetime import date, timedelta
 import numpy as np
 
@@ -22,15 +22,15 @@ def verify_hard_constraints_node(state: SchedulerForm) -> SchedulerForm:
     print('Verifica dei vincoli hard in corso')
         
     
-    sol = solve_hard_constraints(state)
+    #sol = solve_hard_constraints(state)
 
-    if not state.best_plan and sol['hard_constraints_valid']:
-        sol['best_plan'] = state.piano_attuale
-    if state.best_plan and not sol['hard_constraints_valid']:
-        sol["condizione_di_stop"] = "Vincoli Hard Violati"
-    print("Fine verifica dei vincoli hard.")
+    #if not state.best_plan and sol['hard_constraints_valid']:
+    #    sol['best_plan'] = state.piano_attuale
+    #if state.best_plan and not sol['hard_constraints_valid']:
+    #    sol["condizione_di_stop"] = "Vincoli Hard Violati"
+    #print("Fine verifica dei vincoli hard.")
 
-    return sol
+    #return sol
 
 
 def evaluate_fairness_node(state: SchedulerForm) -> SchedulerForm:

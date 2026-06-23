@@ -1,0 +1,20 @@
+INIZIO FILE DI TESTO
+Orizzonte Temporale: La pianificazione copre il periodo di un mese, esattamente dal 7 Dicembre 2026 al 6 Gennaio 2027 compresi (31 giorni in totale).
+Tipologie di Turno e Carico di Lavoro: Ogni giorno è diviso in tre turni:
+Mattina (08:00 - 14:00): durata 6 ore, conta come 1 turno di carico.
+Pomeriggio (14:00 - 20:00): durata 6 ore, conta come 1 turno di carico.
+Notte (20:00 - 08:00): durata 12 ore, conta come 2 turni di carico (carico doppio a causa della durata).
+Requisiti di Copertura (Personale): I requisiti di copertura variano in base alla tipologia di personale impiegato:
+Caso A (Lavoratori Omogenei): Tutti i lavoratori sono interscambiabili. In questo scenario, ogni singolo turno (Mattina, Pomeriggio e Notte) deve essere obbligatoriamente coperto da almeno 2 lavoratori
+.
+Caso B (Lavoratori Misti - Standard e Specializzati): In questo scenario, ogni singolo turno deve avere sempre un minimo di 3 lavoratori assegnati in totale
+. Di questi 3, almeno 1 deve essere obbligatoriamente un lavoratore "specializzato"
+. I restanti possono essere lavoratori standard o, all'occorrenza, altri specializzati che agiscono nel ruolo di standard
+.
+Vincoli di Legge (Hard Constraints):
+Massimo un turno giornaliero: Ogni dipendente può coprire al massimo un turno al giorno.
+Nessun turno consecutivo: Non è consentito assegnare due turni consecutivi a cavallo di due giorni allo stesso lavoratore (es. è vietato fare la Notte e poi la Mattina del giorno immediatamente successivo).
+Riposi post-notte: Dopo aver coperto un turno di Notte, al dipendente devono essere garantiti obbligatoriamente 2 giorni interi di riposo consecutivi (uno per smontare e uno per recuperare).
+Carico di lavoro mensile: Ogni lavoratore deve coprire esattamente 25 turni nell'arco del mese (ricordando che un turno di notte vale doppio nel conteggio verso i 25).
+Limite orario settimanale: Il tempo di lavoro di ciascun dipendente non può superare le 36 ore settimanali complessive.
+Riposo mensile minimo: Deve essere garantito a ciascun dipendente almeno un giorno di riposo assoluto nell'arco del mese.
