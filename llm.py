@@ -44,6 +44,7 @@ def is_rate_limit_or_server_error(exception: Exception) -> bool:
     Se l'errore è un errore di sintassi, API key invalida (400, 403), non facciamo retry.
     """
     err_msg = str(exception).lower()
+    print(f"❌ Errore: {err_msg}")
     return "429" in err_msg or "resource_exhausted" in err_msg or "503" in err_msg or "unavailable" in err_msg
 
 
