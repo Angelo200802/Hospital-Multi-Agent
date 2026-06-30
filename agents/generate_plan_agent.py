@@ -36,38 +36,7 @@ Le preferenze soft sono desiderabili, ma possono essere ignorate se entrano in c
 
 {hard_constraints}
 
-##Strategia di Generazione:
-Segui questa strategia mentale prima di produrre l'output:
-1. Crea una distribuzione iniziale bilanciata dei turni tra i dipendenti.
-2. Assegna prima i turni di notte, perché impongono due giorni successivi di riposo.
-3. Dopo ogni notte, inserisci immediatamente due riposi R, R.
-4. Completa poi i turni di mattina e pomeriggio.
-5. Controlla che ogni giorno abbia copertura sufficiente (almeno 2 dipendenti per turno giornaliero + 1 specializzato se presente).
-6. Controlla che ogni dipendente non superi 36 ore settimanali.
-7. Controlla che ogni dipendente abbia 31 valori.
-8. Controlla che tutti i valori siano solo M, P, N, R.
-9. Solo alla fine prova ad adattare il piano alle preferenze soft.
-
-## Strategia di Correzione Errori (Se ricevi feedback di violazioni): 
-Se ti viene fornito un piano precedente accompagnato da una lista di errori, il tuo compito non è ricreare il piano da zero, ma applicare esclusivamente correzioni chirurgiche:
-1. Isola il problema: Leggi attentamente ogni errore per individuare esattamente l'ID del dipendente e il giorno/settimana in cui si verifica la violazione.
-2. Non stravolgere il piano: Modifica SOLO i turni dei dipendenti menzionati negli errori o i turni strettamente necessari per compensare una modifica. Considera corretta tutta la parte del piano non menzionata negli errori.
-3. Usa la tecnica dello Scambio (Swap): Per risolvere un errore di copertura o di ore, non aggiungere semplicemente un turno, altrimenti sballerai il conteggio totale dei 25 turni. Se devi aggiungere un turno a un dipendente in un giorno scoperto, toglili un turno in un altro giorno, passandolo a un collega.
-4. Attenzione agli Specializzati: Se l'errore riguarda la copertura di uno specializzato (minimo 1 richiesto), puoi scambiare quel turno solo con un altro lavoratore specializzato.
-5. Ribilanciamento a catena: Ogni volta che sposti una 'N' (Notte) per correggere un errore, ricordati che la Notte vale doppio per il carico mensile (2) e richiede obbligatoriamente di spostare anche i due riposi 'R' successivi.
-
-## Autocontrollo prima dell'output (Passo-Passo): 
-Prima di generare l'output finale, verifica mentalmente il piano:
-1. Per ogni dipendente crea mentalmente una lista di 31 turni (es. Dipendente A -> ['M', 'R', 'N', ...]) che rappresentano i turni assegnati per ogni giorno del mese.
-2. Verifica dei 2 giorni post-notte: Controlla che ogni 'N' sia categoricamente seguito da due 'R'.
-3. Verifica delle 36 ore: Assicurati che nei 7 giorni che compongono la settimana ci sia almeno un turno di riposo per rietrare nel vincolo di 36 ore settimanli.
-4. Calcolo dei 25 turni: Per ogni dipendente, conta il carico sommando i turni 'M' e 'P' (valore 1) e i turni 'N' (valore 2) finché non arrivi a ESATTAMENTE 25 per ciascuno, se li ha già raggiunti, non assegnare più turni a quel dipendente.
-5. Verifica che per ogni colonna virtuale (giorno della settimana) ci siano i numeri minimi di dipendenti richiesti:
-    - 2 M, 2 P, 2 N se non ci sono specializzati.
-    - 1 specializzato + 2 qualsiasi se ci sono specializzati.
-6. Verifica Correzione Feedback: Rileggi la lista degli errori che ti è stata fornita in input. Per ogni errore elencato, controlla mentalmente la nuova matrice che hai generato: hai effettivamente eliminato la violazione in quel giorno specifico per quel dipendente?
-7. Verifica dei Danni Collaterali: Assicurati che, per correggere gli errori di un dipendente, tu non abbia inavvertitamente modificato la struttura dei dipendenti che non avevano errori (es. rompendo i loro 25 turni mensili o le loro coperture).
-8. **IMPORTANTE** : Non sacrificare **MAI** un vincolo hard per soddisfare una preferenza soft altrimenti **MORIRAI**.
+{strategy}
 
 ## Il tuo input:
 - Il calendario da seguire con evidenziati i giorni festivi.
@@ -81,18 +50,64 @@ Restituisci il piano nel formato strutturato indicato.
 
 """
 
-HARD_CONSTRAINTS = """
-## Vincoli Hard da Rispettare **AD OGNI FOTTUTISSIMO COSTO**:
-- Ogni dipendente può lavorare al **massimo un turno al giorno**.
-- Non sono permessi turni consecutivi a cavallo di due giorni (es. Notte -> Mattina).
-- Dopo un turno di notte, il dipendente deve avere **almeno 2 giorni di riposo**.
-- Requisiti di copertura per ogni turno:
-    - Se ci sono dipendenti specializzati, ogni turno deve avere **almeno 1 specializzato** e **almeno 3 persone in totale**.
-    - Se non ci sono dipendenti specializzati, ogni turno deve avere **almeno 2 lavoratori qualsiasi**.
-- Ogni dipendente deve lavorare esattamente **25 turni mensili** (considerando la notte come carico di lavoro doppio).
-- Ogni dipendente può lavorare per un **massimo di 36 ore settimanali** (ogni turno dura 6 ore tranne la notte che dura 12 ore).
-- All'interno del mese di lavoro ogni dipendente deve avere **almeno un giorno di riposo garantito**.
+PROMPT_PLANNER_GENERATORE = """
+## Il tuo Ruolo:
+Sei il Senior Planning Agent (Esperto Pianificatore) di una struttura ospedaliera. 
+Il tuo compito NON è risolvere matematicamente il piano dei turni, ma agire come "Mente Strategica". 
+Devi creare una Task Decomposition, una guida al ragionamento (CoT) e una checklist di Self-Control che un altro agente AI (il Generatore di Turni) utilizzerà come manuale di istruzioni per incastrare i turni.
+
+## Descrizione dell'Input:
+Riceverai in input un testo che contiene le regole operative e i vincoli di legge (Hard Constraints) inviolabili del reparto:
+
+Devi leggere attentamente questo testo per capire quali sono i limiti orari, i requisiti di copertura e i colli di bottiglia logici (es. turni che bloccano i giorni successivi).
+
+## Struttura Dati Obiettivo:
+Tutta la tua strategia deve essere costruita attorno alla struttura dati che il Generatore dovrà produrre. 
+Il Generatore strutturerà il piano mentalmente come una matrice: **per ogni dipendente, dovrà generare una lista di esattamente 31 stringhe** (una per ogni giorno del mese).
+I valori ammessi in questa lista sono esclusivamente: **'M' (Mattina), 'P' (Pomeriggio), 'N' (Notte), 'R' (Riposo)**.
+Le tue istruzioni dovranno guidarlo su come scorrere, riempire e validare in sicurezza queste liste di 31 elementi.
+
+## Struttura del Prompt:
+Il tuo output deve essere strutturato ESATTAMENTE in queste tre sezioni Markdown:
+1. ## Strategia di Generazione
+2. ## Strategia di Correzione Errori
+3. ## Autocontrollo prima dell'output
+
+## Strategia di Generazione passo passo (Come scrivere le sezioni):
+Per compilare le tre sezioni, applica rigorosamente questa logica:
+
+- **Per la "Strategia di Generazione":** Istruisci l'agente su come riempire le liste di 31 giorni. Analizza l'input e digli quali turni posizionare per primi negli array (es. se un turno impone riposi successivi, digli di piazzare prima quello e immediatamente i valori 'R' negli indici successivi della lista). 
+Spiegagli poi come riempire gli indici rimanenti per raggiungere i carichi mensili in modo bilanciato e esplicitando di cercare di accontentare più dipendenti possibili.
+- **Per la "Strategia di Correzione Errori":** Crea un protocollo di intervento chirurgico. Se l'agente riceverà una lista di errori, spiegagli che deve usare la tecnica dello "Scambio": per risolvere un errore, deve prendere l'indice `d` (giorno) nella lista del dipendente sfortunato e scambiare il valore (es. 'M' con 'R') con lo stesso indice `d` della lista di un collega compatibile (rispettando le qualifiche), senza sballare i conteggi totali di entrambi.
+- **Per l'"Autocontrollo":** Crea una rigida checklist matematica basata sulla matrice. Istruisci l'agente a:
+  1. Scorrere verticalmente lo stesso indice (da 0 a 30) su tutte le liste dei dipendenti per contare se ci sono abbastanza 'M', 'P', 'N' per garantire la copertura.
+  2. Scorrere orizzontalmente le singole liste di 31 elementi per sommare i carichi (assegnando i giusti pesi a M, P, N) e le ore settimanali (controllando blocchi di 7 indici alla volta), per verificare che nessuno superi i limiti letti nei vincoli.
+
+## Descrizione dell'Output atteso:
+Restituisci ESCLUSIVAMENTE il testo delle tre sezioni richieste, formattato in Markdown.
+Adatta le tue istruzioni e i tuoi esempi specificamente a ciò che hai dedotto dal testo dei vincoli in input.
+NON inserire preamboli, saluti, conferme di comprensione o commenti finali.
 """
+
+def generate_strategy(hard_constraints_dal_file: str) -> str:
+    """
+    Fase 1: Agente LLM che produce la strategia di generazione e autocontrollo.
+    """
+    prompt_variables = { "hard_constraints_dal_file": hard_constraints_dal_file }
+    
+    strategy_text = llm_call(
+        prompts=[
+            ("system", PROMPT_PLANNER_GENERATORE),
+            ("user", "## Vincoli Hard da seguire:\n{hard_constraints_dal_file}")
+        ],
+        #model = GEMINI_MODEL_NAME,
+        prompt_variables=prompt_variables,
+        #use_prod=True,
+        #thinking_level = "high",
+        temperature=0.3
+    )
+
+    return strategy_text.content.strip()
 
 def generate_plan_node(state: SchedulerForm) -> SchedulerForm:
     """
@@ -102,9 +117,14 @@ def generate_plan_node(state: SchedulerForm) -> SchedulerForm:
     """
     
     prompt_variables = { "calendario": CALENDARIO , 
-                        "hard_constraints": HARD_CONSTRAINTS,
+                        "hard_constraints": state.input['hard_constraints'].__str__(),
+                        "strategy": state.planner_strategy if state.planner_strategy else generate_strategy(state.input['hard_constraints'].__str__()),
                         "vincoli_soft": state.vincoli_soft.__str__()  
                     }
+    
+    if not state.planner_strategy:
+        state.planner_strategy = prompt_variables["strategy"]
+
     prompts = [
         ("system", SYSTEM_PROMPT),
         ("user", "##Calendario da seguire: {calendario}\n##Agente Estrattore Preferenze [Output]: {vincoli_soft}")
@@ -123,7 +143,6 @@ def generate_plan_node(state: SchedulerForm) -> SchedulerForm:
         prompts=prompts,
         model = GEMINI_MODEL_NAME,
         prompt_variables=prompt_variables,
-        #use_prod=True,
         thinking_level = "high",
         structured_output=Piano,
         temperature=0.0

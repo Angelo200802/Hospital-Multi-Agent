@@ -38,7 +38,7 @@ L'output deve seguire rigorosamente lo schema strutturato richiesto, che prevede
 
 def verify_extracted_preferences_node(state: SchedulerForm):
 
-    testo_preferenze = state.input.strip()   
+    testo_preferenze = state.input["preferences"].strip()   
     vincoli_estratti = state.vincoli_soft.__str__() if state.vincoli_soft else "Nessun vincolo estratto"
 
     prompts = [

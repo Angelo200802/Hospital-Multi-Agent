@@ -1,4 +1,3 @@
-INIZIO FILE DI TESTO
 Orizzonte Temporale: La pianificazione copre il periodo di un mese, esattamente dal 7 Dicembre 2026 al 6 Gennaio 2027 compresi (31 giorni in totale).
 Tipologie di Turno e Carico di Lavoro: Ogni giorno è diviso in tre turni:
 Mattina (08:00 - 14:00): durata 6 ore, conta come 1 turno di carico.
@@ -16,5 +15,5 @@ Massimo un turno giornaliero: Ogni dipendente può coprire al massimo un turno a
 Nessun turno consecutivo: Non è consentito assegnare due turni consecutivi a cavallo di due giorni allo stesso lavoratore (es. è vietato fare la Notte e poi la Mattina del giorno immediatamente successivo).
 Riposi post-notte: Dopo aver coperto un turno di Notte, al dipendente devono essere garantiti obbligatoriamente 2 giorni interi di riposo consecutivi (uno per smontare e uno per recuperare).
 Carico di lavoro mensile: Ogni lavoratore deve coprire esattamente 25 turni nell'arco del mese (ricordando che un turno di notte vale doppio nel conteggio verso i 25).
-Limite orario settimanale: Il tempo di lavoro di ciascun dipendente non può superare le 36 ore settimanali complessive.
+Limite orario settimanale: Il tempo di lavoro di ciascun dipendente non può superare le 36 ore settimanali complessive (seguendo una finestra fissa).
 Riposo mensile minimo: Deve essere garantito a ciascun dipendente almeno un giorno di riposo assoluto nell'arco del mese.

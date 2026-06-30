@@ -45,7 +45,7 @@ def is_rate_limit_or_server_error(exception: Exception) -> bool:
     """
     err_msg = str(exception).lower()
     print(f"❌ Errore: {err_msg}")
-    return "429" in err_msg or "resource_exhausted" in err_msg or "503" in err_msg or "unavailable" in err_msg
+    return "503" in err_msg or "unavailable" in err_msg
 
 
 def llm_call(prompts: List[Tuple[str, str]],
@@ -62,9 +62,9 @@ def llm_call(prompts: List[Tuple[str, str]],
 
     @retry(
         wait=wait_exponential(multiplier=1, min=2, max=10),
-        stop=stop_after_attempt(3),  # Prova al massimo 3 volte sulla stessa chiave prima di arrenderti
+        stop=stop_after_attempt(10),  
         retry=retry_if_exception(is_rate_limit_or_server_error),
-        reraise=True, # Rilancia l'eccezione se finisce i tentativi, così il ciclo for passa alla chiave successiva
+        reraise=True, 
         before_sleep=lambda retry_state: print(f"⏳ Errore temporaneo. Applico backoff esponenziale: attendo prima del tentativo {retry_state.attempt_number + 1}...")
     )
     def _execute_chain_with_retry(llm_instance):

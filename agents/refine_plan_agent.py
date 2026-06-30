@@ -1,4 +1,4 @@
-from agents.generate_plan_agent import CALENDARIO, HARD_CONSTRAINTS
+from agents.generate_plan_agent import CALENDARIO
 from input_type import SchedulerForm, Piano
 from llm import llm_call
 from dotenv import load_dotenv
@@ -15,8 +15,6 @@ Il tuo obiettivo è raffinare un piano che sia il più possibile equo e soddisfa
 ## Cosa Devi Fare:
 Devi raffinare il piano di turni esistente in base al feedback ricevuto dagli altri agenti.
 Basandoti sulle informazioni sul dipendente più sfortunato, devi cercare di migliorare la sua situazione nel piano, ad esempio assegnandogli più turni desiderati o riducendo i turni meno desiderati, sempre nel rispetto dei vincoli hard e cercando di mantenere il più possibile l'equità per tutti.
-
-{hard_constraints}
 
 ## Il tuo Input:
 - Le preferenze dei dipendenti e i vincoli soft forniti dall'Agente Estrattore Preferenze.
@@ -46,14 +44,14 @@ def refine_plan_node(state: SchedulerForm) -> SchedulerForm:
     """
     
     prompt_variables = { "calendario": CALENDARIO , 
-                        "hard_constraints": HARD_CONSTRAINTS,
+                        "hard_constraints": state.input['hard_constraints'].__str__(),
                         "piano_precedente": state.piano_attuale.__str__(),
                         "vincoli_soft": state.vincoli_soft.__str__() ,
                         "dipendente_piu_sfortunato" : "Il dipendente più sfortunato -> " + state.dipendente_piu_sfortunato[-1]
                         }
     prompts = [
         ("system", SYSTEM_PROMPT),
-        ("user", "## Calendario da seguire: {calendario}\n## Agente Valuazione Fairness[OUTPUT]:\n{dipendente_piu_sfortunato}\n##Agente Estrattore Preferenze [Output]:\n{vincoli_soft} ##Piano generato precendentemente:\n{piano_precedente}")
+        ("user", "## Calendario da seguire: {calendario}\n## Vincoli Hard: {hard_constraints}\n## Agente Valuazione Fairness[OUTPUT]:\n{dipendente_piu_sfortunato}\n##Agente Estrattore Preferenze [Output]:\n{vincoli_soft} ##Piano generato precendentemente:\n{piano_precedente}")
     ]   
 
     print('Raffinamento del piano in corso')      
@@ -63,6 +61,8 @@ def refine_plan_node(state: SchedulerForm) -> SchedulerForm:
         model = GEMINI_MODEL_NAME,
         prompt_variables=prompt_variables,
         structured_output=Piano,
+        #use_prod=True,
+        #use_test=False,
         thinking_level="high",
         temperature=0.0
     )

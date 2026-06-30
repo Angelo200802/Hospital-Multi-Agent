@@ -31,6 +31,21 @@ class GiornoSettimana(Enum):
     SABATO = "sabato"
     DOMENICA = "domenica"
 
+class ErroriCodice(BaseModel):
+    vincolo_interessato: str = Field(..., description="Il nome o la breve descrizione del vincolo violato o mal implementato")
+    tipo_errore: str = Field(..., description="Indica se è un 'Errore Logico', 'Errore di Sintassi' o 'Vincolo Mancante'")
+    descrizione: str = Field(..., description="Spiega dettagliatamente perché il ragionamento (CoT) o il codice sono sbagliati rispetto all'input")
+    suggerimento: str = Field(..., description="Fornisci la riga di codice Python/OR-Tools corretta o l'approccio logico esatto che il generatore deve usare per sistemare il problema")
+
+    def __str__(self):
+        return "Vincolo Interessato: "+self.vincolo_interessato+"\nTipo di Errore: "+self.tipo_errore+"\nDescrizione: "+self.descrizione+"\nSuggerimento: "+self.suggerimento+"\n"
+
+class ListaErroriCodice(BaseModel):
+    errori: List[ErroriCodice] = Field(..., description="Lista di errori rilevati nel codice generato")
+
+    def __str__(self):
+        return "\n".join([str(errore)+"--------" for errore in self.errori])
+
 class RichiestaSpecifica(BaseModel):
     data: str = Field(..., description="La data specifica (formato YYYY-MM-DD)")
     turno: List[TurnoReale] = Field(..., description="Il turno interessato (mattina, pomeriggio, notte, o tutti se indisponibile l'intero giorno)")
@@ -132,7 +147,9 @@ class Piano(BaseModel):
 class SchedulerForm(BaseModel):
     # Input iniziale
     input: dict[str, str]
-    start_time: float = None
+    
+    errori_codice: ListaErroriCodice = None
+
     # Fase 1a/4: Estrazione preferenze
     vincoli_soft: VincoliStrutturati = None      
     # Fase 1b/4: Verifica preferenze estratte
@@ -140,6 +157,7 @@ class SchedulerForm(BaseModel):
     n_iter_correzioni: int = 0
     
     # Fase 2/4: Bozza del piano
+    planner_strategy: str = None
     best_plan: Piano = None
     piano_attuale: Piano = None    
     n_iter_piano: int = 0

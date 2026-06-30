@@ -17,7 +17,7 @@ Un set di preferenze che riguardano **esclusivamente** i dipendenti segnalati co
 
 def correct_preferences_node(state: SchedulerForm):
     
-    testo_preferenze = state.input.strip()   
+    testo_preferenze = state.input["preferences"].strip()   
     vincoli_estratti = state.vincoli_soft if state.vincoli_soft else {}
     preferenze_valide = state.preferenze_valide
     
