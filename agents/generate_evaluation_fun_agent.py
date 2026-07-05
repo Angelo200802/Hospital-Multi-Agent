@@ -148,7 +148,7 @@ costante `MAPPA_PESI` definita in cima al file).
 def generate_fairness_node(state:SchedulerForm) -> str:
     prompt = [
         ("system",SYSTEM_PROMPT_FAIRNESS),
-        ("user", "## Preferenze Dipendente: {preferenze_dipendenti}")
+        ("user", "## Preferenze Dipendenti:\n\n{preferenze_dipendenti}")
     ]
 
     prompt_variables = {

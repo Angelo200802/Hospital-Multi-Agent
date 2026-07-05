@@ -186,17 +186,14 @@ def generate_plan_node(state: SchedulerForm) -> SchedulerForm:
     Se riceve errori hard, corregge il piano. 
     Se riceve un 'dipendente_piu_sfortunato', tenta di migliorare la sua situazione.
     """
-    print("Generazione del piano in corso...")
-    print("Generazione del piano completata") 
-    return { "n_iter_piano": state.n_iter_piano + 1,"piano_attuale" : leggi_piano_da_excel("/home/angelo/Project/uni/AI/progetto/output/piano_di_turni_1781547259.4604442.xlsx").model_dump()}
+    #print("Generazione del piano in corso...")
+    #print("Generazione del piano completata") 
+    #return { "n_iter_piano": state.n_iter_piano + 1,"piano_attuale" : leggi_piano_da_excel("/home/angelo/Project/uni/AI/progetto/output/piano_di_turni_1781547259.4604442.xlsx").model_dump()}
     prompt_variables = { "calendario": CALENDARIO , 
                         "hard_constraints": state.input['hard_constraints'].__str__(),
                         "strategy": state.planner_strategy if state.planner_strategy else generate_strategy(state.input['hard_constraints'].__str__()),
                         "vincoli_soft": state.vincoli_soft.__str__()  
                     }
-    
-    if not state.planner_strategy:
-        state.planner_strategy = prompt_variables["strategy"]
 
     prompts = [
         ("system", SYSTEM_PROMPT),
@@ -223,4 +220,6 @@ def generate_plan_node(state: SchedulerForm) -> SchedulerForm:
 
     print(f"Fine generazione del piano.")
 
-    return {"piano_attuale": piano_attuale.model_dump(), "n_iter_piano": state.n_iter_piano + 1}
+    return {"piano_attuale": piano_attuale.model_dump(), 
+            "n_iter_piano": state.n_iter_piano + 1,
+            "planner_strategy": prompt_variables["strategy"]}

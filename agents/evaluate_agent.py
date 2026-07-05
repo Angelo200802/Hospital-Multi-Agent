@@ -110,7 +110,7 @@ def verify_hard_constraints_node(state: SchedulerForm) -> SchedulerForm:
     model, shifts = crea_modello_csp(model, {}, std_nurses, spec_nurses)
     
     assigned_model = assign_shifts_from_llm(model, shifts, piano_llm,nurses)
-
+    print("Piano LLM:\n\n",piano_llm.__str__())
     solver = cp_model.CpSolver()
     status = solver.Solve(assigned_model)
 
