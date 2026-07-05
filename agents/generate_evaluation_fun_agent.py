@@ -132,13 +132,6 @@ Non ottimizzare, implementa esattamente e solamente quanto specificato.
 dipendente non è presente in `piano`, la funzione non deve mai sollevare eccezioni: salta semplicemente
 quella regola per quel dipendente. Usa sempre `.get(chiave, default)` per accedere ai campi dei dict.
 
-## Correzione del Codice:
-Potresti ricevere un feedback su errori nel codice generato all'iterazione precedente.
-In tal caso, dovrai correggere il codice sorgente in base ai suggerimenti ricevuti, senza modificare la
-firma della funzione né i tipi di dato in input. Assicurati che le correzioni siano coerenti con le
-regole di penalità originali, mantengano l'uso di `MAPPA_PESI`, e non introducano nuove regole non
-richieste.
-
 ## Il tuo Output:
 Scrivi il blocco Python completo rispettando queste istruzioni, applicando il CoT su ogni regola di
 penalità elencata, e restituendo ESCLUSIVAMENTE la funzione `calcola_fairness` richiesta (insieme alla

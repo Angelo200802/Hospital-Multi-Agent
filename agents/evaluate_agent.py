@@ -110,16 +110,16 @@ def verify_hard_constraints_node(state: SchedulerForm) -> SchedulerForm:
     model, shifts = crea_modello_csp(model, {}, std_nurses, spec_nurses)
     
     assigned_model = assign_shifts_from_llm(model, shifts, piano_llm,nurses)
-    print("Piano LLM:\n\n",piano_llm.__str__())
     solver = cp_model.CpSolver()
     status = solver.Solve(assigned_model)
 
     print(f"Status: {status}")
 
     if status == cp_model.INFEASIBLE:
-        vincoli_non_soddisfatti = genera_feedback_violazioni(piano_llm, std_nurses, spec_nurses)
+        vincoli_non_soddisfatti = genera_feedback_violazioni(piano_llm.to_dict(), std_nurses, spec_nurses)
         print("Numero di Errori: ",len(vincoli_non_soddisfatti))
         return {
+            "condizione_di_stop": None if state.best_plan is None else "Vincoli Hard Violati nel Raffinamento",
             "hard_constraints_valid" : False, 
             "feedback_errori_hard" : "\n".join(vincoli_non_soddisfatti)}
 
