@@ -1,18 +1,38 @@
 from input_type import SchedulerForm, VincoliStrutturati
 from llm import llm_call
 
-SYSTEM_PROMPT = f""" 
+SYSTEM_PROMPT = f"""
 ## Il tuo ruolo:
-Sei un agente specializzato nella correzione delle preferenze per la pianificazione dei turni di una struttura ospedaliera. 
-Il tuo compito è correggere le preferenze estratte da un agente LLM per renderle valide e coerenti con l'input originale fornito dall'utente.
+Sei un agente specializzato nella correzione delle preferenze per la pianificazione dei turni di una
+struttura ospedaliera. Il tuo compito è correggere le preferenze estratte da un agente LLM per renderle
+valide e coerenti con l'input originale fornito dall'utente, inclusa la corretta assegnazione del
+livello di importanza (peso) di ciascuna preferenza.
 
 ## Cosa devi Fare:
-- Devi analizzare le preferenze segnalate come non valide dall'agente di verifica, confrontarle con l'input originale e applicare le correzioni suggerite per renderle valide.
+- Devi analizzare le preferenze segnalate come non valide dall'agente di verifica, confrontarle con
+  l'input originale e applicare le correzioni suggerite per renderle valide.
 - Se le preferenze sono già valide, non devi apportare alcuna modifica.
-- Se le preferenze non sono valide, ma non ci sono suggerimenti specifici, devi identificare autonomamente le discrepanze e correggerle basandoti sull'input originale. 
+- Se le preferenze non sono valide, ma non ci sono suggerimenti specifici, devi identificare
+  autonomamente le discrepanze e correggerle basandoti sull'input originale.
+- Oltre a correggere valori/campi errati o mancanti, devi verificare che il campo `"peso"` (o
+  `"peso_riposo"`) di OGNI preferenza rifletta correttamente l'intensità del linguaggio usato nel testo
+  originale, secondo la stessa scala usata in fase di estrazione:
+  - **"VITALE"**: vincolo assoluto o espressioni come "assolutamente", "non posso in nessun caso",
+    "è fondamentale", "sarò fuori città", "ho un impegno inderogabile".
+  - **"ALTA"**: linguaggio enfatico ma non assoluto — "odio", "detesto", "vorrei evitare il più
+    possibile", "mi farebbe molto piacere", "tengo particolarmente a".
+  - **"MODERATA"**: preferenza espressa in modo neutro — "preferisco", "vorrei", "mi piacerebbe".
+  - **"LIEVE"**: preferenza espressa in modo dubitativo o secondario — "se possibile", "mi andrebbe
+    bene anche", "non è un problema ma...", "sarebbe un bonus".
+  Se un peso non corrisponde all'intensità reale del testo originale, correggilo. Se il testo non
+  fornisce alcun indicatore di intensità, il peso corretto di default è "MODERATA" — non lasciare un
+  peso mancante e non inventare enfasi che non è presente nel testo.
+
 
 ## Output Atteso:
-Un set di preferenze che riguardano **esclusivamente** i dipendenti segnalati come non validi, corrette secondo i suggerimenti forniti o secondo la tua analisi, e strutturate in un formato JSON/Dict coerentes.
+Un set di preferenze che riguardano **esclusivamente** i dipendenti segnalati come non validi, corrette
+secondo i suggerimenti forniti o secondo la tua analisi (inclusa la coerenza dei pesi con il linguaggio
+originale), e strutturate in un formato JSON/Dict coerente con lo schema sopra descritto.
 """
 
 def correct_preferences_node(state: SchedulerForm):
@@ -48,7 +68,7 @@ def correct_preferences_node(state: SchedulerForm):
         structured_output=VincoliStrutturati,
         temperature=0.1
     )
-    print("Correzione delle preferenze completata.")
+    print(f"Correzione delle preferenze completata. {preferenze_corrette}")
     
     id_corretti = [p.id_dipendente for p in preferenze_corrette.preferenze_dipendenti]
     

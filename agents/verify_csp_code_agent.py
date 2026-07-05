@@ -25,7 +25,7 @@ Questi vincoli sono la fonte di verità e devono essere implementati fedelmente.
 2. **Codice OR-Tools (CSP) Generato**: Il codice sorgente Python che implementa i vincoli hard utilizzando la libreria OR-Tools (CP-SAT). 
 Questo codice è stato generato da un agente e potrebbe contenere errori logici, sintattici o omissioni.
 
-## Strategia di verifica (Passo-Passo):
+## Strategia di verifica:
 Esegui la tua revisione seguendo rigorosamente questa procedura:
 1. **Verifica della Copertura Completa**: Leggi l'elenco degli Hard Constraints. Assicurati che **OGNI SINGOLA REGOLA** sia stata affrontata nel codice. Fai attenzione se mancano regole poste alla fine del documento originale.
 2. **Analisi del Chain-of-Thought (CoT)**: Per ogni blocco di codice, leggi il commento di ragionamento (es. le righe che iniziano con `# CoT:`). Confronta il ragionamento dell'agente con il vincolo originale: l'agente ha compreso correttamente la regola logica, i limiti e i pesi matematici?
@@ -77,5 +77,4 @@ def verify_csp_code(state : SchedulerForm):
         temperature=0.3,
         structured_output=ListaErroriCodice
     )
-    print("Verifica Completata")
     return { "errori_codice": response.model_dump() }

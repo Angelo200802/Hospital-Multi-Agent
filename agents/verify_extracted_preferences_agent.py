@@ -1,7 +1,33 @@
 from input_type import SchedulerForm,PreferenzeValidate, VincoliStrutturati
+from typing import get_origin, get_args, Union
+from pydantic import BaseModel
 from llm import llm_call
 
-campi_vincoli = "\n".join([f"  - {nome}: {desc}" for nome, desc in VincoliStrutturati.model_fields.items()])
+def genera_descrizione_campi(model: type[BaseModel], indent: int = 0) -> str:
+    """
+    Genera ricorsivamente una lista testuale "- nome_campo: descrizione" a partire
+    dai field di un modello Pydantic, includendo i modelli annidati (dentro List[...]
+    o Optional[...]) con indentazione crescente.
+    """
+    righe = []
+    prefix = "  " * indent
+
+    for nome_campo, field in model.model_fields.items():
+        descrizione = field.description or "Nessuna descrizione fornita"
+        righe.append(f'{prefix}- "{nome_campo}": {descrizione}')
+
+        annotazione = field.annotation
+        origin = get_origin(annotazione)
+        args = get_args(annotazione)
+
+        candidati = args if origin in (list, Union) else (annotazione,)
+        for candidato in candidati:
+            if isinstance(candidato, type) and issubclass(candidato, BaseModel):
+                righe.append(f'{prefix}  Struttura di "{nome_campo}":')
+                righe.append(genera_descrizione_campi(candidato, indent + 2))
+
+    return "\n".join(righe).replace("{", "{{").replace("}", "}}")
+
 
 SYSTEM_PROMPT = """ 
 ## Il tuo ruolo:
@@ -51,7 +77,7 @@ def verify_extracted_preferences_node(state: SchedulerForm):
     risultato_verifica = llm_call(
         prompts=prompts,
         prompt_variables={
-            "campi_vincoli_strutturati": campi_vincoli,
+            "campi_vincoli_strutturati": genera_descrizione_campi(VincoliStrutturati),
             "testo_preferenze": testo_preferenze,
             "vincoli_estratti": vincoli_estratti
         },
@@ -60,6 +86,6 @@ def verify_extracted_preferences_node(state: SchedulerForm):
     )
     
 
-    print("Verifica delle preferenze completata.")
+    print(f"Verifica delle preferenze completata. {risultato_verifica}")
 
     return {"preferenze_valide": risultato_verifica.model_dump()}

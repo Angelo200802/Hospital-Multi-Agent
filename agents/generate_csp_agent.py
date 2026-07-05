@@ -172,16 +172,12 @@ def generate_csp_node(state: SchedulerForm):
     prompt_variables = { "hard_constraints": hard_constraints }
 
     if state.errori_codice is not None:
-        prompts.append(
-            ("user", "## Codice Precedente:\n {csp_code}## Errori Codice Precedenti:\n{errori_codice}\n\nGenera il file Python corretto.")
-        )
+        prompts[1] =  ("user", "Hard Constraints:\n\n{hard_constraints}\n\n## Codice Precedente:\n {csp_code}## Errori Codice Precedenti:\n{errori_codice}\n\nGenera il file Python corretto.")
         with open(OUTPUT_CSP_PATH, "r") as f:
             csp_code = f.read()
         errori_codice_str = state.errori_codice.__str__()
-        prompt_variables = { 
-            "csp_code": csp_code,
-            "errori_codice": errori_codice_str
-        }
+        prompt_variables["csp_code"] = csp_code 
+        prompt_variables["errori_codice"] = errori_codice_str
 
     print("Generazione del codice CSP in corso...")
     risposta_llm = llm_call(

@@ -1,16 +1,17 @@
 from langgraph.graph import StateGraph, END
 from input_type import SchedulerForm
 from agents.generate_csp_agent import generate_csp_node
+from agents.generate_evaluation_fun_agent import generate_fairness_node
 from agents.verify_csp_code_agent import verify_csp_code
 from agents.extract_preferences_agent import extract_preferences_node
 from agents.verify_extracted_preferences_agent import verify_extracted_preferences_node
 from agents.correct_preferences_agent import correct_preferences_node
 from agents.generate_plan_agent import generate_plan_node
 from agents.refine_plan_agent import refine_plan_node
-from agents.verify_evaluate_agent import verify_hard_constraints_node, evaluate_fairness_node
+from agents.evaluate_agent import verify_hard_constraints_node, evaluate_fairness_node
 from agents.return_output_agent import return_output_node
 from dotenv import load_dotenv
-import os, langchain, time
+import os, langchain
 
 langchain.debug = True
 
@@ -20,11 +21,12 @@ HARD_CONSTRAINTS_FILE = os.getenv("HARD_CONSTRAINTS_FILE")
 
 def route_after_code_check(state: SchedulerForm) -> str:
     if state.errori_codice:
-        print(f"Numero di Errori: {len(state.errori_codice.errori)}")
+        print(f"Numero di Errori nel codice csp: {len(state.errori_codice.errori)}")
+        
     if state.errori_codice and len(state.errori_codice.errori) > 0:
-        return "extract_preferences_node"
-    else:
         return "generate_csp_node"
+    else:
+        return "prosegui"
 
 def route_after_hard_check(state: SchedulerForm) -> str:
     """
@@ -58,9 +60,15 @@ def route_after_preferences_check(state: SchedulerForm) -> str:
     preferenze = state.preferenze_valide
     
     if preferenze and preferenze.valide:
-        return "generate_plan_node"
+        return ["generate_fairness_node","generate_csp_node","generate_plan_node"]
     else:
         return "correct_preferences_node"
+
+def route_after_sync(state: SchedulerForm) -> str:
+    if state.piano_attuale and state.errori_codice and len(state.errori_codice.errori) == 0:
+        return "verify_hard_constraints_node"
+    else:
+        return "sync_node"
 
 def build_workflow():
     workflow = StateGraph(SchedulerForm)
@@ -68,41 +76,58 @@ def build_workflow():
     # Aggiunta dei nodi al grafo
     workflow.add_node("generate_csp_node", generate_csp_node)
     workflow.add_node("verify_code_node", verify_csp_code)
+    workflow.add_node("generate_fairness_node", generate_fairness_node)
     workflow.add_node("extract_preferences_node", extract_preferences_node)
     workflow.add_node("verify_extracted_preferences_node", verify_extracted_preferences_node)
     workflow.add_node("correct_preferences_node", correct_preferences_node) 
     workflow.add_node("generate_plan_node", generate_plan_node)
+    #workflow.add_node("sync_node", lambda state: state) 
     workflow.add_node("refine_plan_node", refine_plan_node)
-    workflow.add_node("verify_hard_constraints_node", verify_hard_constraints_node)
+    workflow.add_node("verify_hard_constraints_node", verify_hard_constraints_node,defer = True)
     workflow.add_node("evaluate_fairness_node", evaluate_fairness_node)
     workflow.add_node("output_finale_node", return_output_node)
     
     # Definizione del flusso base (Edges)
-    workflow.set_entry_point("generate_csp_node")
+    workflow.set_entry_point("extract_preferences_node")
     workflow.add_edge("generate_csp_node", "verify_code_node")
     workflow.add_edge("extract_preferences_node", "verify_extracted_preferences_node")
     workflow.add_edge("correct_preferences_node", "verify_extracted_preferences_node" )
     workflow.add_edge("generate_plan_node", "verify_hard_constraints_node")
+    workflow.add_edge("generate_fairness_node", "verify_hard_constraints_node")
+    #workflow.add_edge("sync_node", "verify_hard_constraints_node")
     workflow.add_edge("refine_plan_node", "verify_hard_constraints_node")
     # Aggiunta degli archi condizionali (Conditional Edges)
     
 
     workflow.add_conditional_edges(
-        "verify_code_node",
-        route_after_code_check,
-        {
-            "extract_preferences_node": "extract_preferences_node",
-            "generate_csp_node": "generate_csp_node"
-        }
-    )
-    workflow.add_conditional_edges(
         "verify_extracted_preferences_node",
         route_after_preferences_check,
         {
+            "correct_preferences_node": "correct_preferences_node",
             "generate_plan_node": "generate_plan_node",
-            "correct_preferences_node": "correct_preferences_node"
+            "generate_csp_node": "generate_csp_node",
+            "generate_fairness_node": "generate_fairness_node"
         }
     )
+
+    workflow.add_conditional_edges(
+        "verify_code_node",
+        route_after_code_check,
+        {
+            "prosegui": "verify_hard_constraints_node",
+            "generate_csp_node": "generate_csp_node"
+        }
+    )
+
+    #workflow.add_conditional_edges(
+    #    "sync_node",
+    #    route_after_sync,
+    #    {
+    #        "verify_hard_constraints_node": "verify_hard_constraints_node",
+    #        "sync_node": "sync_node"
+    #    }
+    #)
+   
     workflow.add_conditional_edges(
         "verify_hard_constraints_node",
         route_after_hard_check,
@@ -210,7 +235,7 @@ if __name__ == "c__main__":
     piano = leggi_piano_da_excel("/home/angelo/Project/uni/AI/progetto/output/piano_di_turni_1781509446.534241.xlsx")
     print("Piano letto da Excel e convertito in oggetto Pydantic:", piano)
     from output.csp_std import crea_modello_vincoli_hard
-    from agents.verify_evaluate_agent import assign_shifts_from_llm
+    from agents.evaluate_agent import assign_shifts_from_llm
     from ortools.sat.python import cp_model
     std_nurses = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M"]
     spec_nurses = ["N", "O", "P", "Q", "R", "S"]
@@ -233,6 +258,7 @@ if __name__ == "c__main__":
 if __name__ == "__main__":
     app = build_workflow()
     get_graph(app)
+    
     if PREFERENCES_FILE:
         path = f"{os.getcwd()}/input/{PREFERENCES_FILE}"
         

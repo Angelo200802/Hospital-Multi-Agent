@@ -89,6 +89,77 @@ Adatta le tue istruzioni e i tuoi esempi specificamente a ciò che hai dedotto d
 NON inserire preamboli, saluti, conferme di comprensione o commenti finali.
 """
 
+def leggi_piano_da_excel(percorso_file: str, lista_tutti_dipendenti = None):
+        """
+        Legge il piano turni da un file Excel strutturato con 3 righe (Mattina, Pomeriggio, Notte)
+        e N colonne rappresentanti i giorni. Le celle contengono ID separati da virgole.
+        """
+        # Leggiamo il DataFrame
+        import pandas as pd
+        from input_type import TurniDipendente, TurnoAssegnato, Piano
+        df = pd.read_excel(percorso_file)
+        
+        # Assumiamo che se la prima colonna contiene stringhe come "Mattina", "Pomeriggio", "Notte", 
+        # i giorni veri e propri partano dalla seconda colonna (indice 1). 
+        # Se il tuo file non ha l'etichetta del turno, metti semplicemente colonne_giorni = df.columns
+        colonne_giorni = df.columns[1:] if len(df.columns) > 31 else df.columns
+        num_giorni = len(colonne_giorni)
+
+        # Inizializziamo un dizionario per tenere traccia dei turni: { 'A': ['R', 'R', ...], 'B': [...] }
+        assegnamenti_dict = {}
+        
+        # Mappatura della riga dell'Excel al tipo di turno
+        # Riga 0 = Mattina, Riga 1 = Pomeriggio, Riga 2 = Notte
+        mappa_turni = {0: 'M', 1: 'P', 2: 'N'}
+        
+        # Iteriamo solo sulle prime 3 righe per sicurezza
+        for indice_riga in range(3):
+            turno_corrente = mappa_turni[indice_riga]
+            
+            # Iteriamo su tutte le colonne che rappresentano le date
+            for indice_giorno, nome_colonna in enumerate(colonne_giorni):
+                # Otteniamo il valore della cella
+                cella = df.iloc[indice_riga, df.columns.get_loc(nome_colonna)]
+                
+                # Se la cella non è vuota (NaN)
+                if pd.notna(cella):
+                    # Dividiamo la stringa per virgola e togliamo eventuali spazi (es. "A, B, C" -> ['A', 'B', 'C'])
+                    dipendenti_assegnati = [d.strip() for d in str(cella).split(',')]
+                    
+                    for dipendente in dipendenti_assegnati:
+                        if dipendente: # Controlla che non sia una stringa vuota
+                            # Se è la prima volta che incontriamo questo dipendente, inizializziamo i suoi 31 giorni a 'R'
+                            if dipendente not in assegnamenti_dict:
+                                assegnamenti_dict[dipendente] = ['R'] * num_giorni
+                            
+                            # Assegniamo il turno in quel giorno specifico
+                            assegnamenti_dict[dipendente][indice_giorno] = turno_corrente
+
+        # Se hai passato una lista con tutti i dipendenti noti (es. da 'A' a 'S'), 
+        # garantiamo che anche chi non ha MAI lavorato nel mese (solo 'R') venga aggiunto al Piano
+        if lista_tutti_dipendenti:
+            for dipendente in lista_tutti_dipendenti:
+                if dipendente not in assegnamenti_dict:
+                    assegnamenti_dict[dipendente] = ['R'] * num_giorni
+
+        # Convertiamo il dizionario negli oggetti Pydantic richiesti
+        lista_turni_dipendente = []
+        
+        # Ordiniamo alfabeticamente gli ID dei dipendenti per avere un output pulito
+        for dipendente in sorted(assegnamenti_dict.keys()):
+            # Trasformiamo la lista di stringhe ['M', 'R', 'N'...] nella lista di Enum
+            turni_enum = [TurnoAssegnato(t) for t in assegnamenti_dict[dipendente]]
+            
+            # Creiamo l'oggetto TurniDipendente
+            obj_dipendente = TurniDipendente(
+                id_dipendente=dipendente, 
+                turni_assegnati=turni_enum
+            )
+            lista_turni_dipendente.append(obj_dipendente)
+
+        # Restituiamo l'oggetto Piano finale
+        return Piano(assegnamenti=lista_turni_dipendente)
+
 def generate_strategy(hard_constraints_dal_file: str) -> str:
     """
     Fase 1: Agente LLM che produce la strategia di generazione e autocontrollo.
@@ -115,7 +186,9 @@ def generate_plan_node(state: SchedulerForm) -> SchedulerForm:
     Se riceve errori hard, corregge il piano. 
     Se riceve un 'dipendente_piu_sfortunato', tenta di migliorare la sua situazione.
     """
-    
+    print("Generazione del piano in corso...")
+    print("Generazione del piano completata") 
+    return { "n_iter_piano": state.n_iter_piano + 1,"piano_attuale" : leggi_piano_da_excel("/home/angelo/Project/uni/AI/progetto/output/piano_di_turni_1781547259.4604442.xlsx").model_dump()}
     prompt_variables = { "calendario": CALENDARIO , 
                         "hard_constraints": state.input['hard_constraints'].__str__(),
                         "strategy": state.planner_strategy if state.planner_strategy else generate_strategy(state.input['hard_constraints'].__str__()),

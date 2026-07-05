@@ -1,7 +1,12 @@
-from typing import Optional
-from typing import List, Optional, Union
+from typing import List, Optional, Union, Annotated
 from pydantic import BaseModel, Field
 from enum import Enum
+
+class ImportanzaPreferenza(str, Enum):
+    LIEVE = "LIEVE"
+    MODERATA = "MODERATA"
+    ALTA = "ALTA"
+    VITALE = "VITALE"
 
 class CategoriaTurno(Enum):
     MATTINA = "mattina"
@@ -31,6 +36,19 @@ class GiornoSettimana(Enum):
     SABATO = "sabato"
     DOMENICA = "domenica"
 
+class TurnoConPeso(BaseModel):
+    turno: CategoriaTurno
+    peso: ImportanzaPreferenza = Field(
+        ...,
+        description="Quanto è importante per il dipendente evitare/ottenere questo turno. "
+                    "Deduci l'intensità dal linguaggio usato (es. 'assolutamente', 'preferirei' -> ALTA/VITALE "
+                    "vs 'mi andrebbe meglio' -> LIEVE). Se non espresso, usa MODERATA."
+    )
+
+class GiornoConPeso(BaseModel):
+    giorno: GiornoSettimana
+    peso: ImportanzaPreferenza = Field(..., description="Quanto è importante per il dipendente evitare/ottenere questo giorno della settimana. ")
+
 class ErroriCodice(BaseModel):
     vincolo_interessato: str = Field(..., description="Il nome o la breve descrizione del vincolo violato o mal implementato")
     tipo_errore: str = Field(..., description="Indica se è un 'Errore Logico', 'Errore di Sintassi' o 'Vincolo Mancante'")
@@ -44,25 +62,30 @@ class ListaErroriCodice(BaseModel):
     errori: List[ErroriCodice] = Field(..., description="Lista di errori rilevati nel codice generato")
 
     def __str__(self):
-        return "\n".join([str(errore)+"--------" for errore in self.errori])
+        return "\n".join([str(errore)+"\n--------" for errore in self.errori])
 
 class RichiestaSpecifica(BaseModel):
     data: str = Field(..., description="La data specifica (formato YYYY-MM-DD)")
     turno: List[TurnoReale] = Field(..., description="Il turno interessato (mattina, pomeriggio, notte, o tutti se indisponibile l'intero giorno)")
     desiderato: bool = Field(..., description="True se il dipendente VUOLE lavorare, False se NON PUO'/NON VUOLE lavorare in quel turno")
+    peso: ImportanzaPreferenza = Field(
+        ...,
+        description="Importanza di questa specifica richiesta per il dipendente (es. 'devo assolutamente avere "
+                    "il 24 dicembre libero' -> VITALE)."
+    )
 
 class PreferenzeDipendente(BaseModel):
     id_dipendente: str = Field(..., description="L'identificativo del dipendente (es. 'A')")
     is_specialised: bool = Field(default=False, description="Indica se il dipendente è specializzato")
     
-    turni_desiderati: List[CategoriaTurno] = Field(default=[], description="Elenco dei turni preferiti")
-    turni_da_evitare: List[CategoriaTurno] = Field(default=[], description="Elenco dei turni sgraditi")
-    giorni_settimana_graditi: List[GiornoSettimana] = Field(
+    turni_desiderati: List[TurnoConPeso] = Field(default=[], description="Elenco dei turni preferiti")
+    turni_da_evitare: List[TurnoConPeso] = Field(default=[], description="Elenco dei turni sgraditi")
+    giorni_settimana_graditi: List[GiornoConPeso] = Field(
         default=[], 
         description="Giorni della settimana ricorrenti in cui il dipendente PREFERISCE lavorare (es. 'lunedì', 'martedì')"
     )
     
-    giorni_settimana_sgraditi: List[GiornoSettimana] = Field(
+    giorni_settimana_sgraditi: List[GiornoConPeso] = Field(
         default=[], 
         description="Giorni della settimana ricorrenti in cui il dipendente preferisce NON lavorare (es. 'venerdì', 'domenica')"
     )
@@ -77,6 +100,10 @@ class PreferenzeDipendente(BaseModel):
         default=None, 
         description="Il riposo desiderato. Può essere un giorno della settimana (es. 'domenica') OPPURE una data specifica in formato YYYY-MM-DD (es. '2026-12-24')."
     )
+    peso_riposo: ImportanzaPreferenza = Field(
+        ...,
+        description="Quanto è importante per il dipendente ottenere il riposo nel giorno indicato."
+    )
     tolleranza_turni_consecutivi: List[CategoriaTurno] = Field(default=[], description="Combinazioni di turni consecutivi sgraditi (es. festivi)")
 
 class VincoliStrutturati(BaseModel):
@@ -88,10 +115,10 @@ class VincoliStrutturati(BaseModel):
         stringa = "Vincoli Strutturati:\n"
         for pref in self.preferenze_dipendenti:
             stringa += f"  - Dipendente {pref.id_dipendente} (Specializzato: {pref.is_specialised}):\n"
-            stringa += f"    Turni desiderati: {[t.value for t in pref.turni_desiderati]}\n"
-            stringa += f"    Turni da evitare: {[t.value for t in pref.turni_da_evitare]}\n"
-            stringa += f"    Giorni della settimana graditi: {[g.value for g in pref.giorni_settimana_graditi]}\n"
-            stringa += f"    Giorni della settimana sgraditi: {[g.value for g in pref.giorni_settimana_sgraditi]}\n"
+            stringa += f"    Turni desiderati: {[f'{t.turno} (Peso {t.peso})' for t in pref.turni_desiderati]}\n"
+            stringa += f"    Turni da evitare: {[f'{t.turno} (Peso {t.peso})' for t in pref.turni_da_evitare]}\n"
+            stringa += f"    Giorni della settimana graditi: {[f'{g.giorno} (Peso {g.peso})' for g in pref.giorni_settimana_graditi]}\n"
+            stringa += f"    Giorni della settimana sgraditi: {[f'{g.giorno} (Peso {g.peso})' for g in pref.giorni_settimana_sgraditi]}\n"
             stringa += f"    Richieste specifiche:\n"
             for req in pref.richieste_specifiche:
                 turni = [t.value for t in req.turno]
@@ -100,7 +127,7 @@ class VincoliStrutturati(BaseModel):
                 stringa += f"    Max emergenze accettate: {pref.max_emergenze}\n"
             if pref.giorno_riposo_preferito is not None:
                 riposo = pref.giorno_riposo_preferito.value if isinstance(pref.giorno_riposo_preferito, GiornoSettimana) else pref.giorno_riposo_preferito
-                stringa += f"    Giorno di riposo preferito: {riposo}\n"
+                stringa += f"    Giorno di riposo preferito: {riposo}, (Peso {pref.peso_riposo})\n"
             if pref.tolleranza_turni_consecutivi:
                 turni_consecutivi = [t.value for t in pref.tolleranza_turni_consecutivi]
                 stringa += f"    Tolleranza turni consecutivi sgraditi: {turni_consecutivi}\n"
@@ -143,12 +170,21 @@ class Piano(BaseModel):
             string += f"  - Dipendente {turni_dipendente.id_dipendente}:\n"
             string += " ".join([t.value for t in turni_dipendente.turni_assegnati]) + "\n"
         return string
+    
+    def to_dict(self):
+        return {
+            a.id_dipendente: [t.value for t in a.turni_assegnati]
+            for a in self.assegnamenti
+        }
+
+def last_value(old,new):
+    return new if new is not None else old
 
 class SchedulerForm(BaseModel):
     # Input iniziale
     input: dict[str, str]
     
-    errori_codice: ListaErroriCodice = None
+    errori_codice: Annotated[ListaErroriCodice,last_value] = None
 
     # Fase 1a/4: Estrazione preferenze
     vincoli_soft: VincoliStrutturati = None      
@@ -159,7 +195,7 @@ class SchedulerForm(BaseModel):
     # Fase 2/4: Bozza del piano
     planner_strategy: str = None
     best_plan: Piano = None
-    piano_attuale: Piano = None    
+    piano_attuale: Annotated[Piano, last_value] = None    
     n_iter_piano: int = 0
    
     # Fase 3a/4: Verifica vincoli Hard

@@ -1,5 +1,5 @@
-from input_type import SchedulerForm, GiornoSettimana, Piano
-from typing import Dict
+from input_type import SchedulerForm, GiornoSettimana, Piano, TurnoAssegnato
+from typing import Dict, List
 from datetime import date, timedelta
 from ortools.sat.python import cp_model
 from dotenv import load_dotenv
@@ -7,6 +7,7 @@ import numpy as np, sys, os, importlib
 
 CSP_PATH = os.getenv("OUTPUT_CSP_PATH")
 FEEDBACK_PATH = os.getenv("OUTPUT_FEEDBACK_PATH")
+FAIRNESS_PATH = os.getenv("OUTPUT_FAIRNESS_PATH")
 
 NUM_DAYS = 31       # 7 Dicembre - 7 Gennaio
 NUM_SHIFTS = 3      # 0=Mattina, 1=Pomeriggio, 2=Notte
@@ -22,16 +23,6 @@ def get_data_string(d: int) -> str:
     return data_corrente.strftime("%Y-%m-%d")
 
 def importa_funzione_da_file(file_path: str, nome_metodo: str):
-    """
-    Importa dinamicamente un metodo specifico da un file Python generato dall'LLM.
-    
-    Args:
-        file_path (str): Il percorso completo o relativo al file .py (es. 'output/feedback.py')
-        nome_metodo (str): Il nome esatto della funzione da importare
-        
-    Returns:
-        function: L'oggetto funzione pronto per essere eseguito.
-    """
     if not os.path.exists(file_path):
         raise FileNotFoundError(f"Errore: Il file '{file_path}' non è stato trovato.")
         
@@ -63,6 +54,8 @@ def assign_shifts_from_llm(
         nurses: list[str]
 ) -> cp_model.CpModel:
     
+    piano_llm : dict[str, List[str]] = piano_llm.to_dict()
+
     shift_map = {
         "M": 0,  # Mattina
         "P": 1,  # Pomeriggio
@@ -71,10 +64,10 @@ def assign_shifts_from_llm(
 
     if piano_llm:
         for n in nurses:
-            turni_assegnati = [piano_n for piano_n in piano_llm.assegnamenti if piano_n.id_dipendente == str(n)][0].turni_assegnati
+            turni_assegnati = piano_llm.get(n, [])
             
             for d in range(NUM_DAYS):
-                turno_llm = turni_assegnati[d].value 
+                turno_llm = turni_assegnati[d]
                 
                 if turno_llm in shift_map:
                     s_assegnato = shift_map[turno_llm]
@@ -148,79 +141,12 @@ def evaluate_fairness_node(state: SchedulerForm) -> SchedulerForm:
     
     print('Valutazione della fairness in corso')
     
-    punteggi = {}
-    giorni = [giorno.value for giorno in GiornoSettimana]
-    turni_map = {'M': 'mattina', 'P': 'pomeriggio', 'N': 'notte', "R": 'riposo'}
-
-    for dipendente in state.vincoli_soft.preferenze_dipendenti:
-        n = dipendente.id_dipendente
-        turni_assegnati = [piano_n for piano_n in state.piano_attuale.assegnamenti if piano_n.id_dipendente == str(n)][0].turni_assegnati
-        penalita = 0
-        
-        giorni_no = [g.value for g in dipendente.giorni_settimana_sgraditi]
-        turni_no = [t.value for t in dipendente.turni_da_evitare]
-        
-        if dipendente.giorno_riposo_preferito:
-            riposo_ottenuto = False
-            pref_riposo = dipendente.giorno_riposo_preferito
-            
-            for d in range(31):
-                if turni_assegnati[d] == 'R':
-                    giorno_settimana = giorni[d % 7]
-                    if pref_riposo.lower() == giorno_settimana.lower():
-                        riposo_ottenuto = True
-                        penalita -= 10 
-                        break
-            
-            if not riposo_ottenuto:
-                penalita += 20 
-
-        for d in range(31):
-            turni = turni_assegnati[d]
-            if turni.value == 'R':
-                continue 
-                
-            giorno_settimana = giorni[d % 7]
-            is_weekend = giorno_settimana in ["sabato", "domenica"]
-            
-            data_str = get_data_string(d)
-            richiesta_match = False 
-            
-            for req in dipendente.richieste_specifiche:
-                if req.data != data_str:
-                    continue
-
-                turni_richiesti = [t.value if hasattr(t, 'value') else t for t in req.turno]
-                turno_assegnato_match = (turni_map[turni.value] in turni_richiesti) or ("tutti" in turni_richiesti)
-
-                if req.desiderato == False and turno_assegnato_match:
-                    penalita += 15
-
-                elif req.desiderato == True:
-                    if turno_assegnato_match:
-                        penalita -= 2
-                        richiesta_match = True
-                    else:
-                        penalita += 5 
-            
-            if richiesta_match:
-                continue
-            
-            if turni_map[turni.value] in turni_no:
-                penalita += 10
-                
-            if giorno_settimana in giorni_no:
-                penalita += 10
-                
-            if is_weekend and "weekend" in turni_no:
-                penalita += 10
-                
-            if d > 0 and turni_assegnati[d-1] != 'R':
-                turno_ieri = turni_assegnati[d-1]
-                if turni_map[turni.value] in [t.value for t in dipendente.tolleranza_turni_consecutivi] and turni_map[turni.value] == turni_map[turno_ieri.value]:
-                    penalita += 20
-
-        punteggi[n] = penalita
+    valuta_fairness = importa_funzione_da_file(
+        file_path=FAIRNESS_PATH, 
+        nome_metodo="calcola_fairness"
+    )
+    
+    punteggi : Dict = valuta_fairness(state.piano_attuale.to_dict(), [p.model_dump(mode="json") for p in state.vincoli_soft.preferenze_dipendenti])
 
     
     lavoratore_piu_sfortunato = max(punteggi, key=punteggi.get)
@@ -233,6 +159,7 @@ def evaluate_fairness_node(state: SchedulerForm) -> SchedulerForm:
         state.fairness_score = punteggi
         return {
             "fairness_score": punteggi,
+            "best_plan": state.piano_attuale,
             "dipendente_piu_sfortunato": [lavoratore_piu_sfortunato],
             "terminazione_raggiunta": False    
         }

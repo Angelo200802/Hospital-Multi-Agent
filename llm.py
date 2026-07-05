@@ -33,7 +33,7 @@ def create_llm(api_key: str,
     )
 
     if structured_output:
-        llm = llm.with_structured_output(structured_output, method="json_mode")
+        llm = llm.with_structured_output(structured_output, method="function_calling")
 
     return llm
 
