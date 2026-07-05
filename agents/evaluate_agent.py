@@ -119,7 +119,7 @@ def verify_hard_constraints_node(state: SchedulerForm) -> SchedulerForm:
         vincoli_non_soddisfatti = genera_feedback_violazioni(piano_llm.to_dict(), std_nurses, spec_nurses)
         print("Numero di Errori: ",len(vincoli_non_soddisfatti))
         return {
-            "condizione_di_stop": None if state.best_plan is None else "Vincoli Hard Violati nel Raffinamento",
+            "condizione_di_stop": "None" if state.best_plan is None else "Vincoli Hard Violati nel Raffinamento",
             "hard_constraints_valid" : False, 
             "feedback_errori_hard" : "\n".join(vincoli_non_soddisfatti)}
 
