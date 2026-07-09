@@ -14,14 +14,6 @@ MAPPA_PESI = {
 }
 
 def calcola_fairness(piano, preferenze_dipendenti):
-    """
-    Calcola il punteggio di insoddisfazione (fairness) per ciascun dipendente
-    confrontando i turni assegnati nel piano con le sue preferenze.
-    
-    :param piano: Dizionario {"id_dipendente": ["M", "R", "N", ...]} con 31 turni.
-    :param preferenze_dipendenti: Lista di dizionari contenenti le preferenze di ciascun dipendente.
-    :return: Dizionario {"id_dipendente": punteggio_totale}
-    """
     # Gestione difensiva iniziale per input nulli o vuoti
     if not piano or not preferenze_dipendenti:
         return {}
@@ -120,14 +112,6 @@ def calcola_fairness(piano, preferenze_dipendenti):
         num_giorni = min(31, len(piano_dip))
         penalty = 0.0
 
-        # ==========================================
-        # REGOLA 1: Turno indesiderato assegnato
-        # ==========================================
-        # CoT:
-        # 1. Verifico la preferenza "turni_da_evitare" del dipendente (lista di turni sgraditi).
-        # 2. Ricavo ciascun turno da evitare e il relativo peso associato tramite la chiave "turni_da_evitare".
-        # 3. Se il turno assegnato in un giorno d corrisponde al turno sgradito (o se è WEEKEND/FESTIVO
-        #    e il dipendente lavora in quel giorno speciale), sommo MAPPA_PESI[peso] alla penalità.
         turni_da_evitare = pref.get("turni_da_evitare", [])
         if turni_da_evitare:
             for item in turni_da_evitare:
@@ -148,14 +132,6 @@ def calcola_fairness(piano, preferenze_dipendenti):
                     if is_match:
                         penalty += peso_val
 
-        # ==========================================
-        # REGOLA 2: Turno desiderato assegnato (Bonus)
-        # ==========================================
-        # CoT:
-        # 1. Verifico la preferenza "turni_desiderati" del dipendente.
-        # 2. Ricavo ciascun turno desiderato e il relativo peso associato tramite la chiave "turni_desiderati".
-        # 3. Se il turno assegnato in un giorno d corrisponde al turno desiderato,
-        #    sottraggo la metà del peso (MAPPA_PESI[peso] // 2) come bonus dalla penalità.
         turni_desiderati = pref.get("turni_desiderati", [])
         if turni_desiderati:
             for item in turni_desiderati:
@@ -176,17 +152,7 @@ def calcola_fairness(piano, preferenze_dipendenti):
                     if is_match:
                         penalty -= peso_val // 2
 
-        # ==========================================
-        # REGOLA 3: Richiesta specifica su una data
-        # ==========================================
-        # CoT:
-        # 1. Verifico la preferenza "richieste_specifiche" del dipendente.
-        # 2. Ricavo la data, la lista di turni coinvolti, il flag "desiderato" e il peso associato.
-        # 3. Converto la data nell'indice del giorno d (0 = 7 Dicembre 2026).
-        # 4. Se "desiderato" è True: se il turno assegnato corrisponde a uno di quelli richiesti (o se è "tutti"
-        #    e il turno non è "R"), applico un bonus (sottraggo MAPPA_PESI[peso] // 2). Altrimenti, applico una penalità (sommo MAPPA_PESI[peso]).
-        # 5. Se "desiderato" è False: se il turno assegnato corrisponde a uno di quelli sgraditi (o se è "tutti"
-        #    e il turno non è "R"), applico una penalità (sommo MAPPA_PESI[peso]).
+
         richieste_specifiche = pref.get("richieste_specifiche", [])
         if richieste_specifiche:
             for req in richieste_specifiche:
@@ -224,14 +190,6 @@ def calcola_fairness(piano, preferenze_dipendenti):
                         if is_match:
                             penalty += peso_val
 
-        # ==========================================
-        # REGOLA 4: Giorno della settimana sgradito
-        # ==========================================
-        # CoT:
-        # 1. Verifico la preferenza "giorni_settimana_sgraditi" del dipendente.
-        # 2. Ricavo il giorno della settimana sgradito e il relativo peso associato.
-        # 3. Se il dipendente lavora (turno != "R") in un giorno d il cui giorno della settimana
-        #    corrisponde a quello sgradito, sommo MAPPA_PESI[peso] alla penalità.
         giorni_settimana_sgraditi = pref.get("giorni_settimana_sgraditi", [])
         if giorni_settimana_sgraditi:
             for item in giorni_settimana_sgraditi:
@@ -243,15 +201,7 @@ def calcola_fairness(piano, preferenze_dipendenti):
                     assigned = piano_dip[d]
                     if assigned != "R" and days_info[d]["weekday"] == g_norm:
                         penalty += peso_val
-
-        # ==========================================
-        # REGOLA 4b: Giorno della settimana gradito (Bonus)
-        # ==========================================
-        # CoT:
-        # 1. Verifico la preferenza "giorni_settimana_graditi" del dipendente.
-        # 2. Ricavo il giorno della settimana gradito e il relativo peso associato.
-        # 3. Se il dipendente lavora (turno != "R") in un giorno d il cui giorno della settimana
-        #    corrisponde a quello gradito, sottraggo MAPPA_PESI[peso] // 2 dalla penalità.
+    
         giorni_settimana_graditi = pref.get("giorni_settimana_graditi", [])
         if giorni_settimana_graditi:
             for item in giorni_settimana_graditi:
@@ -264,15 +214,6 @@ def calcola_fairness(piano, preferenze_dipendenti):
                     if assigned != "R" and days_info[d]["weekday"] == g_norm:
                         penalty -= peso_val // 2
 
-        # ==========================================
-        # REGOLA 5: Riposo preferito non rispettato
-        # ==========================================
-        # CoT:
-        # 1. Verifico la preferenza "giorno_riposo_preferito" e il relativo "peso_riposo".
-        # 2. Se è una data specifica (contiene "-"), verifico se in quel giorno esatto il turno assegnato è "R".
-        # 3. Se è un giorno della settimana (es. "domenica"), verifico se esiste almeno un giorno di riposo ("R")
-        #    in quel giorno della settimana lungo tutto il mese.
-        # 4. Se la preferenza non è rispettata, sommo MAPPA_PESI[peso_riposo] alla penalità (una sola volta).
         giorno_riposo_preferito = pref.get("giorno_riposo_preferito")
         peso_riposo_str = pref.get("peso_riposo", "MODERATA")
         peso_riposo_val = get_peso_valore(peso_riposo_str)
@@ -303,16 +244,7 @@ def calcola_fairness(piano, preferenze_dipendenti):
 
             if not rest_respected:
                 penalty += peso_riposo_val
-
-        # ==========================================
-        # REGOLA 6: Turni consecutivi dello stesso tipo non tollerati
-        # ==========================================
-        # CoT:
-        # 1. Verifico la preferenza "tolleranza_turni_consecutivi" del dipendente.
-        # 2. Per ciascun turno non tollerato consecutivamente, confronto il turno del giorno d con il giorno d-1.
-        # 3. Se entrambi i giorni sono lavorati (diversi da "R") e coincidono con il tipo sgradito "t"
-        #    (o se "t" è "festivo"/"weekend" ed entrambi i giorni consecutivi sono festivi/weekend lavorati),
-        #    sommo MAPPA_PESI[peso] alla penalità per ogni occorrenza.
+        
         tolleranza_turni_consecutivi = pref.get("tolleranza_turni_consecutivi", [])
         if tolleranza_turni_consecutivi:
             for item in tolleranza_turni_consecutivi:
@@ -336,7 +268,6 @@ def calcola_fairness(piano, preferenze_dipendenti):
                         if is_match:
                             penalty += peso_val
 
-        # Memorizzazione del punteggio finale (arrotondato a 2 cifre decimali per pulizia)
         risultati_fairness[id_dip] = round(penalty, 2)
 
     return risultati_fairness

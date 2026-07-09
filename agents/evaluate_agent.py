@@ -1,4 +1,5 @@
 from input_type import SchedulerForm, GiornoSettimana, Piano, TurnoAssegnato
+from .fairness import calcola_fairness
 from typing import Dict, List
 from datetime import date, timedelta
 from ortools.sat.python import cp_model
@@ -141,12 +142,7 @@ def evaluate_fairness_node(state: SchedulerForm) -> SchedulerForm:
     
     print('Valutazione della fairness in corso')
     
-    valuta_fairness = importa_funzione_da_file(
-        file_path=FAIRNESS_PATH, 
-        nome_metodo="calcola_fairness"
-    )
-    
-    punteggi : Dict = valuta_fairness(state.piano_attuale.to_dict(), [p.model_dump(mode="json") for p in state.vincoli_soft.preferenze_dipendenti])
+    punteggi : Dict = calcola_fairness(state.piano_attuale.to_dict(), [p.model_dump(mode="json") for p in state.vincoli_soft.preferenze_dipendenti])
 
     
     lavoratore_piu_sfortunato = max(punteggi, key=punteggi.get)

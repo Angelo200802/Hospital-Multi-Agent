@@ -1,11 +1,11 @@
 from langgraph.graph import StateGraph, END
 from input_type import SchedulerForm
 from agents.generate_csp_agent import generate_csp_node
-from agents.generate_evaluation_fun_agent import generate_fairness_node
 from agents.verify_csp_code_agent import verify_csp_code
 from agents.extract_preferences_agent import extract_preferences_node
 from agents.verify_extracted_preferences_agent import verify_extracted_preferences_node
 from agents.correct_preferences_agent import correct_preferences_node
+from agents.planner_agent import generate_strategy
 from agents.generate_plan_agent import generate_plan_node
 from agents.refine_plan_agent import refine_plan_node
 from agents.evaluate_agent import verify_hard_constraints_node, evaluate_fairness_node
@@ -60,7 +60,7 @@ def route_after_preferences_check(state: SchedulerForm) -> str:
     preferenze = state.preferenze_valide
     
     if preferenze and preferenze.valide:
-        return ["generate_fairness_node","generate_csp_node","generate_plan_node"]
+        return ["generate_csp_node","generate_strategy_node"]
     else:
         return "correct_preferences_node"
 
@@ -70,10 +70,10 @@ def build_workflow():
     # Aggiunta dei nodi al grafo
     workflow.add_node("generate_csp_node", generate_csp_node)
     workflow.add_node("verify_code_node", verify_csp_code)
-    workflow.add_node("generate_fairness_node", generate_fairness_node)
     workflow.add_node("extract_preferences_node", extract_preferences_node)
     workflow.add_node("verify_extracted_preferences_node", verify_extracted_preferences_node)
     workflow.add_node("correct_preferences_node", correct_preferences_node) 
+    workflow.add_node("generate_strategy_node", generate_strategy)
     workflow.add_node("generate_plan_node", generate_plan_node)
     workflow.add_node("refine_plan_node", refine_plan_node)
     workflow.add_node("verify_hard_constraints_node", verify_hard_constraints_node,defer = True)
@@ -85,8 +85,8 @@ def build_workflow():
     workflow.add_edge("generate_csp_node", "verify_code_node")
     workflow.add_edge("extract_preferences_node", "verify_extracted_preferences_node")
     workflow.add_edge("correct_preferences_node", "verify_extracted_preferences_node" )
+    workflow.add_edge("generate_strategy_node", "generate_plan_node")
     workflow.add_edge("generate_plan_node", "verify_hard_constraints_node")
-    workflow.add_edge("generate_fairness_node", "verify_hard_constraints_node")
     workflow.add_edge("refine_plan_node", "verify_hard_constraints_node")
     # Aggiunta degli archi condizionali (Conditional Edges)
     
@@ -96,9 +96,8 @@ def build_workflow():
         route_after_preferences_check,
         {
             "correct_preferences_node": "correct_preferences_node",
-            "generate_plan_node": "generate_plan_node",
-            "generate_csp_node": "generate_csp_node",
-            "generate_fairness_node": "generate_fairness_node"
+            "generate_strategy_node": "generate_strategy_node",
+            "generate_csp_node": "generate_csp_node"
         }
     )
 
@@ -110,15 +109,6 @@ def build_workflow():
             "generate_csp_node": "generate_csp_node"
         }
     )
-
-    #workflow.add_conditional_edges(
-    #    "sync_node",
-    #    route_after_sync,
-    #    {
-    #        "verify_hard_constraints_node": "verify_hard_constraints_node",
-    #        "sync_node": "sync_node"
-    #    }
-    #)
    
     workflow.add_conditional_edges(
         "verify_hard_constraints_node",
@@ -171,8 +161,7 @@ if __name__ == "__main__":
         print("File dei vincoli hard caricato correttamente.")
     if PREFERENCES_FILE and HARD_CONSTRAINTS_FILE:   
         print("Inizio del processo di generazione del piano...")
-        #print(generate_strategy(hard_constraints_dal_file=hard_constraints))
-        piano = app.invoke({"input":{ "preferences": input_iniziale, "hard_constraints": hard_constraints }})
-        print("Piano finale generato:\n", piano.get("piano_attuale"))
+        #piano = app.invoke({"input":{ "preferences": input_iniziale, "hard_constraints": hard_constraints }})
+        #print("Piano finale generato:\n", piano.get("piano_attuale"))
     else:
         raise ValueError("Il nome del file di input non è specificato nelle variabili d'ambiente")

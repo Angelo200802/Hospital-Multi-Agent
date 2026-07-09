@@ -60,8 +60,7 @@ def return_output_node(state: SchedulerForm) -> SchedulerForm:
                 "iterazioni_raffinazioni": state.n_iter_raffinazioni,
                 "fairness_score": state.fairness_score,
                 "dipendente_piu_sfortunato": state.dipendente_piu_sfortunato,
-                "condizione_di_stop": state.condizione_di_stop ,
-                "strategy": state.planner_strategy if state.planner_strategy else ""
+                "condizione_di_stop": state.condizione_di_stop 
             }, indent=4))
     except Exception as e:
         print(f"Errore durante il salvataggio del log di audit: {e}")
