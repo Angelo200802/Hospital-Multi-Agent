@@ -1,8 +1,3 @@
-# # File generato automaticamente dallo Stage 2 (Coding Fairness Agent)
-
-# # Contiene la specifica della funzione di valutazione della fairness
-
-
 import datetime
 
 # Costante globale per la mappatura dei pesi dichiarati in punteggi numerici
