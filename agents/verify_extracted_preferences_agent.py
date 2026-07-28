@@ -82,7 +82,7 @@ def verify_extracted_preferences_node(state: SchedulerForm):
             "vincoli_estratti": vincoli_estratti
         },
         structured_output=PreferenzeValidate,
-        temperature=0.5
+        temperature=0.3
     )
     
 

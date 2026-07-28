@@ -161,7 +161,7 @@ if __name__ == "__main__":
         print("File dei vincoli hard caricato correttamente.")
     if PREFERENCES_FILE and HARD_CONSTRAINTS_FILE:   
         print("Inizio del processo di generazione del piano...")
-        #piano = app.invoke({"input":{ "preferences": input_iniziale, "hard_constraints": hard_constraints }})
-        #print("Piano finale generato:\n", piano.get("piano_attuale"))
+        piano = app.invoke({"input":{ "preferences": input_iniziale, "hard_constraints": hard_constraints }})
+        print("Piano finale generato:\n", piano.get("piano_attuale"))
     else:
         raise ValueError("Il nome del file di input non è specificato nelle variabili d'ambiente")

@@ -45,6 +45,10 @@ class TurnoConPeso(BaseModel):
                     "vs 'mi andrebbe meglio' -> LIEVE). Se non espresso, usa MODERATA."
     )
 
+class CategoriaTurnoConPeso(BaseModel):
+    categoria_turno: CategoriaTurno
+    peso: ImportanzaPreferenza = Field(..., description="Quanto è importante per il dipendente evitare/ottenere questa categoria di turno. ")
+
 class GiornoConPeso(BaseModel):
     giorno: GiornoSettimana
     peso: ImportanzaPreferenza = Field(..., description="Quanto è importante per il dipendente evitare/ottenere questo giorno della settimana. ")
@@ -101,10 +105,10 @@ class PreferenzeDipendente(BaseModel):
         description="Il riposo desiderato. Può essere un giorno della settimana (es. 'domenica') OPPURE una data specifica in formato YYYY-MM-DD (es. '2026-12-24')."
     )
     peso_riposo: ImportanzaPreferenza = Field(
-        ...,
+            ...,
         description="Quanto è importante per il dipendente ottenere il riposo nel giorno indicato."
     )
-    tolleranza_turni_consecutivi: List[CategoriaTurno] = Field(default=[], description="Combinazioni di turni consecutivi sgraditi (es. festivi)")
+    tolleranza_turni_consecutivi: List[CategoriaTurnoConPeso] = Field(default=[], description="Combinazioni di turni consecutivi sgraditi (es. festivi)")
 
 class VincoliStrutturati(BaseModel):
     preferenze_dipendenti: List[PreferenzeDipendente] = Field(
@@ -129,7 +133,7 @@ class VincoliStrutturati(BaseModel):
                 riposo = pref.giorno_riposo_preferito.value if isinstance(pref.giorno_riposo_preferito, GiornoSettimana) else pref.giorno_riposo_preferito
                 stringa += f"    Giorno di riposo preferito: {riposo}, (Peso {pref.peso_riposo})\n"
             if pref.tolleranza_turni_consecutivi:
-                turni_consecutivi = [t.value for t in pref.tolleranza_turni_consecutivi]
+                turni_consecutivi = [f"{t.categoria_turno.value} (Peso {t.peso.value})" for t in pref.tolleranza_turni_consecutivi]
                 stringa += f"    Tolleranza turni consecutivi sgraditi: {turni_consecutivi}\n"
         return stringa
 

@@ -1,268 +1,143 @@
 import datetime
 
-# Costante globale per la mappatura dei pesi dichiarati in punteggi numerici
 MAPPA_PESI = {
     "LIEVE": 2,
     "MODERATA": 5,
     "ALTA": 8,
-    "VITALE": 10
+    "VITALE": 10,
 }
 
-def calcola_fairness(piano, preferenze_dipendenti):
-    # Gestione difensiva iniziale per input nulli o vuoti
+GIORNI_SETTIMANA = ["lunedì", "martedì", "mercoledì", "giovedì", "venerdì", "sabato", "domenica"]
+FESTIVI = {"2026-12-08", "2026-12-25", "2026-12-26", "2027-01-01", "2027-01-06"}
+DATA_INIZIO = datetime.date(2026, 12, 7)
+NUM_GIORNI = 31
+SHIFT_MAP = {"mattina": "M", "pomeriggio": "P", "notte": "N"}
+
+
+def _info_giorni() -> list[dict]:
+    """Precalcola weekday/weekend/festivo per ciascuno dei 31 giorni del piano."""
+    info = []
+    for d in range(NUM_GIORNI):
+        data = DATA_INIZIO + datetime.timedelta(days=d)
+        data_str = data.isoformat()
+        info.append({
+            "weekday": GIORNI_SETTIMANA[data.weekday()],
+            "is_weekend": data.weekday() in (5, 6),
+            "is_festivo": data_str in FESTIVI,
+        })
+    return info
+
+
+def _turno_corrisponde(categoria: str, turno_assegnato: str, giorno_info: dict) -> bool:
+    if not categoria or turno_assegnato == "R":
+        return False
+    if categoria == "weekend":
+        return giorno_info["is_weekend"]
+    if categoria == "festivo":
+        return giorno_info["is_festivo"]
+    return SHIFT_MAP.get(categoria) == turno_assegnato
+
+
+def calcola_fairness(piano: dict, preferenze_dipendenti: list) -> dict:
     if not piano or not preferenze_dipendenti:
         return {}
 
-    # Data di inizio del piano: 7 Dicembre 2026
-    start_date = datetime.date(2026, 12, 7)
-    giorni_settimana = ["lunedì", "martedì", "mercoledì", "giovedì", "venerdì", "sabato", "domenica"]
-    festivi_date = {"2026-12-08", "2026-12-25", "2026-12-26", "2027-01-01", "2027-01-06"}
+    giorni_info = _info_giorni()
+    risultati = {}
 
-    # Pre-calcolo delle informazioni sui 31 giorni per ottimizzare e semplificare i confronti
-    days_info = []
-    for d in range(31):
-        curr_date = start_date + datetime.timedelta(days=d)
-        date_str = curr_date.isoformat()
-        weekday_idx = curr_date.weekday()
-        weekday_name = giorni_settimana[weekday_idx]
-        is_weekend = weekday_idx in (5, 6)
-        is_holiday = date_str in festivi_date
-        days_info.append({
-            "date": date_str,
-            "weekday": weekday_name,
-            "is_weekend": is_weekend,
-            "is_holiday": is_holiday
-        })
-
-    # Helper per estrarre il valore numerico del peso in modo sicuro e difensivo
-    def get_peso_valore(peso_str):
-        if not peso_str:
-            return MAPPA_PESI["MODERATA"]
-        peso_upper = str(peso_str).upper()
-        for key in MAPPA_PESI:
-            if key in peso_upper:
-                return MAPPA_PESI[key]
-        return MAPPA_PESI["MODERATA"]
-
-    # Helper per normalizzare i codici dei turni e gestire formati stringa complessi
-    def normalize_shift(s):
-        if not s:
-            return ""
-        s_upper = str(s).upper()
-        if "MATTINA" in s_upper or s_upper == "M":
-            return "M"
-        if "POMERIGGIO" in s_upper or s_upper == "P":
-            return "P"
-        if "NOTTE" in s_upper or s_upper == "N":
-            return "N"
-        if "RIPOSO" in s_upper or s_upper == "R":
-            return "R"
-        if "WEEKEND" in s_upper:
-            return "WEEKEND"
-        if "FESTIVO" in s_upper:
-            return "FESTIVO"
-        if "TUTTI" in s_upper:
-            return "TUTTI"
-        return s_upper
-
-    # Helper universale per fare il parsing di preferenze espresse sia come dict che come stringhe grezze
-    def parse_preference_item(item):
-        if isinstance(item, str):
-            val = item
-            peso = "MODERATA"
-            if "Peso" in item:
-                parts = item.split("Peso")
-                val = parts[0].strip()
-                peso_part = parts[1]
-                for k in MAPPA_PESI:
-                    if k in peso_part.upper():
-                        peso = k
-                        break
-            if "." in val:
-                val = val.split(".")[-1]
-            val = val.replace("(", "").replace(")", "").strip()
-            return {"val": val, "peso": peso}
-        elif isinstance(item, dict):
-            val = item.get("turno") or item.get("giorno") or item.get("val")
-            peso = item.get("peso", "MODERATA")
-            if val and "." in str(val):
-                val = str(val).split(".")[-1]
-            return {"val": val, "peso": peso}
-        return {"val": None, "peso": "MODERATA"}
-
-    risultati_fairness = {}
-
-    # Ciclo esterno su ciascun dipendente presente nelle preferenze strutturate
     for pref in preferenze_dipendenti:
-        id_dip = pref.get("id_dipendente")
-        if not id_dip:
+        emp_id = pref.get("id_dipendente")
+        if not emp_id:
             continue
 
-        # Se il dipendente non è presente nel piano, il suo punteggio viene inizializzato a 0 e saltato
-        if id_dip not in piano:
-            risultati_fairness[id_dip] = 0
+        turni = piano.get(emp_id)
+        if not turni or len(turni) < NUM_GIORNI:
+            risultati[emp_id] = 0.0
             continue
 
-        piano_dip = piano[id_dip]
-        num_giorni = min(31, len(piano_dip))
-        penalty = 0.0
+        penalita = 0.0
 
-        turni_da_evitare = pref.get("turni_da_evitare", [])
-        if turni_da_evitare:
-            for item in turni_da_evitare:
-                parsed = parse_preference_item(item)
-                t_norm = normalize_shift(parsed["val"])
-                peso_val = get_peso_valore(parsed["peso"])
+        # Regola 1: turno indesiderato assegnato
+        for item in pref.get("turni_da_evitare") or []:
+            peso_val = MAPPA_PESI.get(item.get("peso"), MAPPA_PESI["MODERATA"])
+            for d in range(NUM_GIORNI):
+                if _turno_corrisponde(item.get("turno"), turni[d], giorni_info[d]):
+                    penalita += peso_val
 
-                for d in range(num_giorni):
-                    assigned = piano_dip[d]
-                    is_match = False
-                    if t_norm == "WEEKEND":
-                        is_match = days_info[d]["is_weekend"] and assigned != "R"
-                    elif t_norm == "FESTIVO":
-                        is_match = days_info[d]["is_holiday"] and assigned != "R"
-                    else:
-                        is_match = (assigned == t_norm)
+        # Regola 2: turno desiderato assegnato (bonus)
+        for item in pref.get("turni_desiderati") or []:
+            peso_val = MAPPA_PESI.get(item.get("peso"), MAPPA_PESI["MODERATA"])
+            for d in range(NUM_GIORNI):
+                if _turno_corrisponde(item.get("turno"), turni[d], giorni_info[d]):
+                    penalita -= peso_val / 2
 
-                    if is_match:
-                        penalty += peso_val
+        # Regola 3: giorno della settimana sgradito
+        for item in pref.get("giorni_settimana_sgraditi") or []:
+            peso_val = MAPPA_PESI.get(item.get("peso"), MAPPA_PESI["MODERATA"])
+            for d in range(NUM_GIORNI):
+                if turni[d] != "R" and giorni_info[d]["weekday"] == item.get("giorno"):
+                    penalita += peso_val
 
-        turni_desiderati = pref.get("turni_desiderati", [])
-        if turni_desiderati:
-            for item in turni_desiderati:
-                parsed = parse_preference_item(item)
-                t_norm = normalize_shift(parsed["val"])
-                peso_val = get_peso_valore(parsed["peso"])
+        # Regola 4: giorno della settimana gradito (bonus)
+        for item in pref.get("giorni_settimana_graditi") or []:
+            peso_val = MAPPA_PESI.get(item.get("peso"), MAPPA_PESI["MODERATA"])
+            for d in range(NUM_GIORNI):
+                if turni[d] != "R" and giorni_info[d]["weekday"] == item.get("giorno"):
+                    penalita -= peso_val / 2
 
-                for d in range(num_giorni):
-                    assigned = piano_dip[d]
-                    is_match = False
-                    if t_norm == "WEEKEND":
-                        is_match = days_info[d]["is_weekend"] and assigned != "R"
-                    elif t_norm == "FESTIVO":
-                        is_match = days_info[d]["is_holiday"] and assigned != "R"
-                    else:
-                        is_match = (assigned == t_norm)
+        # Regola 5: richiesta specifica su una data
+        for req in pref.get("richieste_specifiche") or []:
+            data_str = req.get("data")
+            if not data_str:
+                continue
+            try:
+                d = (datetime.date.fromisoformat(data_str) - DATA_INIZIO).days
+            except ValueError:
+                continue
+            if not (0 <= d < NUM_GIORNI):
+                continue
 
-                    if is_match:
-                        penalty -= peso_val // 2
+            assegnato = turni[d]
+            desiderato = req.get("desiderato", False)
+            peso_val = MAPPA_PESI.get(req.get("peso"), MAPPA_PESI["MODERATA"])
+            turni_richiesti = req.get("turno") or []
 
+            match = (assegnato != "R") if "tutti" in turni_richiesti else \
+                    any(SHIFT_MAP.get(t) == assegnato for t in turni_richiesti)
 
-        richieste_specifiche = pref.get("richieste_specifiche", [])
-        if richieste_specifiche:
-            for req in richieste_specifiche:
-                if not isinstance(req, dict):
-                    continue
-                data_str = req.get("data")
-                if not data_str:
-                    continue
+            if desiderato:
+                penalita += (-peso_val / 2) if match else peso_val
+            elif match:
+                penalita += peso_val
+
+        # Regola 6: riposo preferito non rispettato
+        giorno_riposo = pref.get("giorno_riposo_preferito")
+        if giorno_riposo:
+            peso_riposo_val = MAPPA_PESI.get(pref.get("peso_riposo"), MAPPA_PESI["MODERATA"])
+            rispettato = False
+            if "-" in giorno_riposo:  # è una data specifica YYYY-MM-DD
                 try:
-                    req_date = datetime.date.fromisoformat(data_str)
-                    d = (req_date - start_date).days
-                except Exception:
-                    continue
-
-                if 0 <= d < num_giorni:
-                    assigned = piano_dip[d]
-                    turni_req = req.get("turno", [])
-                    if isinstance(turni_req, str):
-                        turni_req = [turni_req]
-                    turni_req_norm = [normalize_shift(t) for t in turni_req]
-                    desiderato = req.get("desiderato", True)
-                    peso_str = req.get("peso", "MODERATA")
-                    peso_val = get_peso_valore(peso_str)
-
-                    has_tutti = any(t == "TUTTI" for t in turni_req_norm)
-
-                    if desiderato:
-                        is_match = (assigned != "R") if has_tutti else (assigned in turni_req_norm)
-                        if is_match:
-                            penalty -= peso_val // 2
-                        else:
-                            penalty += peso_val
-                    else:
-                        is_match = (assigned != "R") if has_tutti else (assigned in turni_req_norm)
-                        if is_match:
-                            penalty += peso_val
-
-        giorni_settimana_sgraditi = pref.get("giorni_settimana_sgraditi", [])
-        if giorni_settimana_sgraditi:
-            for item in giorni_settimana_sgraditi:
-                parsed = parse_preference_item(item)
-                g_norm = str(parsed["val"]).lower() if parsed["val"] else ""
-                peso_val = get_peso_valore(parsed["peso"])
-
-                for d in range(num_giorni):
-                    assigned = piano_dip[d]
-                    if assigned != "R" and days_info[d]["weekday"] == g_norm:
-                        penalty += peso_val
-    
-        giorni_settimana_graditi = pref.get("giorni_settimana_graditi", [])
-        if giorni_settimana_graditi:
-            for item in giorni_settimana_graditi:
-                parsed = parse_preference_item(item)
-                g_norm = str(parsed["val"]).lower() if parsed["val"] else ""
-                peso_val = get_peso_valore(parsed["peso"])
-
-                for d in range(num_giorni):
-                    assigned = piano_dip[d]
-                    if assigned != "R" and days_info[d]["weekday"] == g_norm:
-                        penalty -= peso_val // 2
-
-        giorno_riposo_preferito = pref.get("giorno_riposo_preferito")
-        peso_riposo_str = pref.get("peso_riposo", "MODERATA")
-        peso_riposo_val = get_peso_valore(peso_riposo_str)
-
-        if giorno_riposo_preferito:
-            riposo_pref = str(giorno_riposo_preferito)
-            if "." in riposo_pref:
-                riposo_pref = riposo_pref.split(".")[-1]
-            riposo_pref_norm = riposo_pref.lower()
-
-            is_date = "-" in riposo_pref_norm
-            rest_respected = False
-
-            if is_date:
-                try:
-                    req_date = datetime.date.fromisoformat(riposo_pref_norm)
-                    d = (req_date - start_date).days
-                    if 0 <= d < num_giorni:
-                        if piano_dip[d] == "R":
-                            rest_respected = True
-                except Exception:
+                    d = (datetime.date.fromisoformat(giorno_riposo) - DATA_INIZIO).days
+                    rispettato = 0 <= d < NUM_GIORNI and turni[d] == "R"
+                except ValueError:
                     pass
-            else:
-                for d in range(num_giorni):
-                    if days_info[d]["weekday"] == riposo_pref_norm and piano_dip[d] == "R":
-                        rest_respected = True
-                        break
+            else:  # è un giorno della settimana ricorrente
+                rispettato = any(
+                    giorni_info[d]["weekday"] == giorno_riposo and turni[d] == "R"
+                    for d in range(NUM_GIORNI)
+                )
+            if not rispettato:
+                penalita += peso_riposo_val
 
-            if not rest_respected:
-                penalty += peso_riposo_val
-        
-        tolleranza_turni_consecutivi = pref.get("tolleranza_turni_consecutivi", [])
-        if tolleranza_turni_consecutivi:
-            for item in tolleranza_turni_consecutivi:
-                parsed = parse_preference_item(item)
-                t_norm = normalize_shift(parsed["val"])
-                peso_val = get_peso_valore(parsed["peso"])
+        # Regola 7: turni consecutivi dello stesso tipo non tollerati
+        for item in pref.get("tolleranza_turni_consecutivi") or []:
+            categoria = item.get("categoria_turno")
+            peso_val = MAPPA_PESI.get(item.get("peso"), MAPPA_PESI["MODERATA"])
+            for d in range(1, NUM_GIORNI):
+                if _turno_corrisponde(categoria, turni[d], giorni_info[d]) and \
+                   _turno_corrisponde(categoria, turni[d - 1], giorni_info[d - 1]):
+                    penalita += peso_val
 
-                for d in range(1, num_giorni):
-                    assigned_curr = piano_dip[d]
-                    assigned_prev = piano_dip[d-1]
+        risultati[emp_id] = round(penalita, 2)
 
-                    if assigned_curr != "R" and assigned_prev != "R":
-                        is_match = False
-                        if t_norm == "FESTIVO":
-                            is_match = days_info[d]["is_holiday"] and days_info[d-1]["is_holiday"]
-                        elif t_norm == "WEEKEND":
-                            is_match = days_info[d]["is_weekend"] and days_info[d-1]["is_weekend"]
-                        else:
-                            is_match = (assigned_curr == t_norm and assigned_prev == t_norm)
-
-                        if is_match:
-                            penalty += peso_val
-
-        risultati_fairness[id_dip] = round(penalty, 2)
-
-    return risultati_fairness
+    return risultati
