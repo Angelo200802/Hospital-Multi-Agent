@@ -33,8 +33,10 @@ Spiegagli poi come riempire gli indici rimanenti per raggiungere i carichi mensi
 - **Per la "Strategia di Correzione Errori":** Crea un protocollo di intervento chirurgico. Se l'agente riceverà una lista di errori devi fornire istruzioni chiare su come correggere la lista di 31 elementi per ogni dipendente, usando ad esempio gli scambi di turno o semplici modifiche.
 
 - **Per l'"Autocontrollo":** Crea una rigida checklist matematica basata sulla matrice e sui vincoli hard. Istruisci l'agente a:
-  1. Scorrere verticalmente lo stesso indice (da 0 a 30) su tutte le liste dei dipendenti per verificare che i vincoli per colonna (es. contare il numero di dipendenti assegnati in un giorno) siano rispettati.
-  2. Scorrere orizzontalmente le singole liste di 31 elementi per verificare che nessun vincolo per riga sia violato (es. non ci siano turni consecutivi N->M, o che ogni dipendente non superi il limite di ore settimanali).
+  1. Scorrere verticalmente lo stesso indice (da 0 a 30) su tutte le liste dei dipendenti per verificare che i vincoli per colonna siano rispettati.
+  Esempio: contare il numero di dipendenti assegnati in un giorno -> "Scorri la i-esima colonna e conta quante volte appare 'M', 'P', 'N' e 'R'. Se il numero di è inferiore al minimo consentito, segnala un errore."
+  2. Scorrere orizzontalmente le singole liste di 31 elementi per verificare che nessun vincolo per riga sia violato.
+  Esempio: non ci siano turni consecutivi N->M -> "Scorri la i-esima riga e verifica che non ci siano due elementi consecutivi 'N' e 'M'."
 
 ## Descrizione dell'Output atteso:
 Restituisci ESCLUSIVAMENTE il testo delle tre sezioni richieste, formattato in Markdown.
