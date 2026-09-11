@@ -1,0 +1,55 @@
+{
+    "dipendenti": [
+        "A",
+        "B",
+        "C",
+        "D",
+        "E",
+        "F",
+        "G",
+        "H",
+        "I",
+        "J",
+        "K",
+        "L",
+        "M"
+    ],
+    "iterazioni_correzioni_preferenze": 1,
+    "iterazioni_piano": 5,
+    "iterazioni_raffinazioni": 5,
+    "fairness_score": {
+        "A": -32.5,
+        "B": -120.0,
+        "C": 0.0,
+        "D": 20.0,
+        "E": -17.0,
+        "F": 0.0,
+        "G": 10.0,
+        "H": -67.5,
+        "I": -5.0,
+        "J": 7.5,
+        "K": 0.0,
+        "L": 0.0,
+        "M": -65.0
+    },
+    "stats": {
+        "mean": -20.73076923076923,
+        "median": 0.0,
+        "std": 38.7504915028955,
+        "min": {
+            "B": -120.0
+        },
+        "max": {
+            "D": 20.0
+        }
+    },
+    "dipendenti_piu_sfortunati": [
+        "D con punteggio 64.0",
+        "D con punteggio 42.0",
+        "C con punteggio 42.0",
+        "C con punteggio 20.0",
+        "D con punteggio 20.0",
+        "D con punteggio 24.0"
+    ],
+    "condizione_di_stop": "Fairness Score Peggiorato"
+}

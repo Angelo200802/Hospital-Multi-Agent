@@ -1,4 +1,4 @@
-from input_type import SchedulerForm, TurnoAssegnato
+from input_type import CategoriaTurno, CategoriaTurnoConPeso, GiornoConPeso, GiornoSettimana, ImportanzaPreferenza, PreferenzeDipendente, RichiestaSpecifica, SchedulerForm, TurnoAssegnato, TurnoConPeso, TurnoReale, VincoliStrutturati
 from datetime import date, timedelta
 import pandas as pd
 import numpy as np
@@ -54,6 +54,7 @@ def return_output_node(state: SchedulerForm) -> SchedulerForm:
     
     try:
         with open(f"{os.getcwd()}/output/audit_log_{time.time()}.json", "w") as f:
+            valori_fairness = list(state.fairness_score.values())
             f.write(json.dumps({
                 "dipendenti": [a.id_dipendente for a in piano.assegnamenti],
                 "iterazioni_correzioni_preferenze": state.n_iter_correzioni,
@@ -61,14 +62,14 @@ def return_output_node(state: SchedulerForm) -> SchedulerForm:
                 "iterazioni_raffinazioni": state.n_iter_raffinazioni,
                 "fairness_score": state.fairness_score,
                 "stats":{
-                    "mean" : np.mean(state.fairness_score.values()),
-                    "median" : np.median(state.fairness_score.values()),
-                    "std" : np.std(state.fairness_score.values()),
+                    "mean" : np.mean(valori_fairness),
+                    "median" : np.median(valori_fairness),
+                    "std" : np.std(valori_fairness),
                     "min" : {
-                        min(state.fairness_score, key=state.fairness_score.get): np.min(state.fairness_score.values())
+                        min(state.fairness_score, key=state.fairness_score.get): np.min(valori_fairness)
                     },
                     "max" : {
-                        max(state.fairness_score, key=state.fairness_score.get): np.max(state.fairness_score.values())
+                        max(state.fairness_score, key=state.fairness_score.get): np.max(valori_fairness)
                         }
                 },
                 "dipendenti_piu_sfortunati": state.dipendente_piu_sfortunato,
@@ -79,5 +80,3 @@ def return_output_node(state: SchedulerForm) -> SchedulerForm:
         return
     
     print("Piano finale preparato e salvato in output.")
-
-

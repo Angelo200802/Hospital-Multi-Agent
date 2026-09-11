@@ -3,141 +3,127 @@
 # # Contiene la funzione di estrazione feedback dagli errori hard del piano
 
 
-def estrai_feedback_errori_hard(piano_assegnamenti, std_nurses, spec_nurses):
+def estrai_feedback_errori_hard(piano_assegnamenti, std_nurses, spec_nurses) -> list[str]:
     errori = []
     all_nurses = std_nurses + spec_nurses
     num_days = 31
-    num_shifts = 3
-
-    # Normalizzazione del piano_assegnamenti in un unico dizionario
-    assegnamenti = {}
-    if isinstance(piano_assegnamenti, list):
-        for item in piano_assegnamenti:
-            if isinstance(item, dict):
-                assegnamenti.update(item)
-    elif isinstance(piano_assegnamenti, dict):
-        assegnamenti = piano_assegnamenti
-
-    # Funzione di utilità per mappare i turni testuali ai valori del CSP
+    
+    # Helper per mappare i turni testuali ai valori numerici del CSP
     def get_shift_val(n, d, s):
-        if n not in assegnamenti:
+        if n not in piano_assegnamenti:
             return 0
-        turni = assegnamenti[n]
-        if d >= len(turni):
+        if d >= len(piano_assegnamenti[n]):
             return 0
-        turno = turni[d]
-        if turno == 'M' and s == 0:
-            return 1
-        elif turno == 'P' and s == 1:
-            return 1
-        elif turno == 'N' and s == 2:
-            return 1
+        val = piano_assegnamenti[n][d]
+        if val == 'M' and s == 0: return 1
+        if val == 'P' and s == 1: return 1
+        if val == 'N' and s == 2: return 1
         return 0
 
     shift_names = {0: "Mattina (M)", 1: "Pomeriggio (P)", 2: "Notte (N)"}
 
-    # 1. Vincolo di Copertura Giornaliera per ogni turno
-    if len(spec_nurses) == 0:
-        # Caso A: Almeno 2 lavoratori per turno
-        for d in range(num_days):
-            for s in range(num_shifts):
-                tot_workers = sum(get_shift_val(n, d, s) for n in all_nurses)
-                if tot_workers < 2:
+    # 1. Copertura Minima per ogni turno di ogni giorno
+    for d in range(num_days):
+        for s in range(3):
+            tot_assigned = sum(get_shift_val(n, d, s) for n in all_nurses)
+            spec_assigned = sum(get_shift_val(n, d, s) for n in spec_nurses)
+            
+            if len(spec_nurses) == 0:
+                # Caso A: Almeno 2 lavoratori per turno
+                if tot_assigned < 2:
                     errori.append(
-                        f"Giorno {d}: Copertura insufficiente nel turno {shift_names[s]}. "
-                        f"Assegnati {tot_workers} lavoratori, richiesti almeno 2."
+                        f"Giorno {d+1}: Copertura insufficiente nel turno {shift_names[s]}. "
+                        f"Assegnati: {tot_assigned}, richiesti: almeno 2."
                     )
-    else:
-        # Caso B: Almeno 3 lavoratori totali e almeno 1 specializzato per turno
-        for d in range(num_days):
-            for s in range(num_shifts):
-                tot_workers = sum(get_shift_val(n, d, s) for n in all_nurses)
-                spec_workers = sum(get_shift_val(n, d, s) for n in spec_nurses)
-                if tot_workers < 3:
+            else:
+                # Caso B: Almeno 3 lavoratori totali, di cui almeno 1 specializzato
+                if tot_assigned < 3:
                     errori.append(
-                        f"Giorno {d}: Copertura totale insufficiente nel turno {shift_names[s]}. "
-                        f"Assegnati {tot_workers} lavoratori, richiesti almeno 3."
+                        f"Giorno {d+1}: Copertura totale insufficiente nel turno {shift_names[s]}. "
+                        f"Assegnati: {tot_assigned}, richiesti: almeno 3."
                     )
-                if spec_workers < 1:
+                if spec_assigned < 1:
                     errori.append(
-                        f"Giorno {d}: Mancanza di personale specializzato nel turno {shift_names[s]}. "
-                        f"Assegnati {spec_workers} specializzati, richiesto almeno 1."
+                        f"Giorno {d+1}: Mancanza di personale specializzato nel turno {shift_names[s]}. "
+                        f"Specializzati assegnati: {spec_assigned}, richiesti: almeno 1."
                     )
 
-    # 2. Impedire turni consecutivi (Notte -> Mattina del giorno dopo)
+    # 2. Massimo un turno al giorno per dipendente
     for n in all_nurses:
-        for d in range(num_days - 1):
-            if get_shift_val(n, d, 2) == 1 and get_shift_val(n, d + 1, 0) == 1:
-                errori.append(
-                    f"Dipendente {n}: Violazione turno consecutivo vietato. "
-                    f"Assegnato turno di Notte al giorno {d} e Mattina al giorno {d+1}."
-                )
+        if n in piano_assegnamenti:
+            for d in range(min(num_days, len(piano_assegnamenti[n]))):
+                val = piano_assegnamenti[n][d]
+                if val not in ['M', 'P', 'N', 'R']:
+                    errori.append(
+                        f"Infermiere {n}, Giorno {d+1}: Turno non valido '{val}'. "
+                        f"I valori ammessi sono M, P, N, R."
+                    )
 
-    # 3. Garantire 2 giorni interi di riposo consecutivi dopo un turno di Notte
+    # 3. Riposo post-notte (2 giorni interi di riposo consecutivi dopo un turno di Notte)
     for n in all_nurses:
         for d in range(num_days):
-            if get_shift_val(n, d, 2) == 1:
+            if get_shift_val(n, d, 2) == 1:  # Turno di Notte al giorno d
+                # Controllo giorno d+1
                 if d + 1 < num_days:
-                    worked_d1 = sum(get_shift_val(n, d + 1, s) for s in range(num_shifts))
-                    if worked_d1 > 0:
+                    worked_shifts_d1 = [s for s in range(3) if get_shift_val(n, d + 1, s) == 1]
+                    if worked_shifts_d1:
+                        assigned_shift = piano_assegnamenti[n][d + 1]
                         errori.append(
-                            f"Dipendente {n}: Violazione riposo post-notte. "
-                            f"Lavora al giorno {d+1} dopo aver fatto la Notte al giorno {d}."
+                            f"Infermiere {n}: Violazione riposo post-notte. Ha lavorato di Notte il giorno {d+1} "
+                            f"ed è stato assegnato al turno {assigned_shift} il giorno {d+2} (richiesto riposo)."
                         )
+                # Controllo giorno d+2
                 if d + 2 < num_days:
-                    worked_d2 = sum(get_shift_val(n, d + 2, s) for s in range(num_shifts))
-                    if worked_d2 > 0:
+                    worked_shifts_d2 = [s for s in range(3) if get_shift_val(n, d + 2, s) == 1]
+                    if worked_shifts_d2:
+                        assigned_shift = piano_assegnamenti[n][d + 2]
                         errori.append(
-                            f"Dipendente {n}: Violazione riposo post-notte. "
-                            f"Lavora al giorno {d+2} dopo aver fatto la Notte al giorno {d}."
+                            f"Infermiere {n}: Violazione riposo post-notte. Ha lavorato di Notte il giorno {d+1} "
+                            f"ed è stato assegnato al turno {assigned_shift} il giorno {d+3} (richiesto riposo)."
                         )
 
-    # 4. Esattamente 25 turni di carico nel mese
+    # 4. Carico di lavoro mensile (esattamente 25 turni equivalenti: M=1, P=1, N=2)
     for n in all_nurses:
-        workload = sum(
-            get_shift_val(n, d, 0) * 1 + 
-            get_shift_val(n, d, 1) * 1 + 
-            get_shift_val(n, d, 2) * 2 
+        tot_weight = sum(
+            get_shift_val(n, d, 0) + get_shift_val(n, d, 1) + 2 * get_shift_val(n, d, 2)
             for d in range(num_days)
         )
-        if workload != 25:
+        if tot_weight != 25:
             errori.append(
-                f"Dipendente {n}: Violazione carico di lavoro mensile. "
-                f"Assegnati {workload} punti carico, richiesti esattamente 25."
+                f"Infermiere {n}: Carico di lavoro mensile errato. "
+                f"Totale turni equivalenti assegnati: {tot_weight}, richiesti: 25."
             )
 
-    # 5. Massimo 36 ore settimanali complessive su finestre fisse
+    # 5. Ore di lavoro settimanali (massimo 36 ore su finestre fisse: M=6h, P=6h, N=12h)
     weeks = [
-        range(0, 7),    # Settimana 1: giorni 0-6
-        range(7, 14),   # Settimana 2: giorni 7-13
-        range(14, 21),  # Settimana 3: giorni 14-20
-        range(21, 28),  # Settimana 4: giorni 21-27
-        range(28, 31)   # Settimana 5: giorni 28-30
+        range(0, 7),    # Settimana 1
+        range(7, 14),   # Settimana 2
+        range(14, 21),  # Settimana 3
+        range(21, 28),  # Settimana 4
+        range(28, 31)   # Settimana 5
     ]
     for n in all_nurses:
-        for w_idx, w_range in enumerate(weeks):
+        for idx, week in enumerate(weeks):
             hours = sum(
-                get_shift_val(n, d, 0) * 6 + 
-                get_shift_val(n, d, 1) * 6 + 
-                get_shift_val(n, d, 2) * 12 
-                for d in w_range
+                6 * get_shift_val(n, d, 0) + 6 * get_shift_val(n, d, 1) + 12 * get_shift_val(n, d, 2)
+                for d in week
             )
             if hours > 36:
+                week_str = f"giorni {week.start+1}-{week.stop}"
                 errori.append(
-                    f"Dipendente {n}: Violazione ore settimanali nella settimana {w_idx+1} "
-                    f"(giorni {w_range.start}-{w_range.stop-1}). Assegnate {hours} ore, limite massimo 36."
+                    f"Infermiere {n}: Superamento ore settimanali nella settimana {idx+1} ({week_str}). "
+                    f"Ore lavorate: {hours}, limite consentito: 36."
                 )
 
-    # 6. Almeno un giorno di riposo assoluto nel mese
+    # 6. Almeno un giorno di riposo assoluto nell'arco del mese (lavorare in al massimo 30 giorni)
     for n in all_nurses:
-        days_worked = sum(
-            1 for d in range(num_days) 
-            if sum(get_shift_val(n, d, s) for s in range(num_shifts)) > 0
+        tot_active_days = sum(
+            get_shift_val(n, d, s) for d in range(num_days) for s in range(3)
         )
-        if days_worked > 30:
+        if tot_active_days > 30:
             errori.append(
-                f"Dipendente {n}: Violazione riposo assoluto mensile. "
-                f"Lavorati {days_worked} giorni su 31, richiesto almeno 1 giorno di riposo."
+                f"Infermiere {n}: Violazione riposo mensile. "
+                f"Ha lavorato {tot_active_days} giorni su 31 (richiesto almeno 1 giorno di riposo assoluto)."
             )
 
     return errori

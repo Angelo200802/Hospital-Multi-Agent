@@ -159,21 +159,23 @@ def evaluate_fairness_node(state: SchedulerForm) -> SchedulerForm:
         return {
             "fairness_score": punteggi,
             "best_plan": state.piano_attuale,
-            "dipendente_piu_sfortunato": [lavoratore_piu_sfortunato],
+            "dipendente_piu_sfortunato": [f"{lavoratore_piu_sfortunato} con punteggio {peggior_punteggio}"],
             "terminazione_raggiunta": False    
         }
+    dipendenti_sfortunati = state.dipendente_piu_sfortunato
+    dipendenti_sfortunati.append(f"{lavoratore_piu_sfortunato} con punteggio {peggior_punteggio}")
 
     if peggior_punteggio > max(state.fairness_score.values()):
         return {
             "condizione_di_stop": "Fairness Score Peggiorato",
+            "dipendente_piu_sfortunato": dipendenti_sfortunati,
             "terminazione_raggiunta": True
         }
     if peggior_punteggio < max(state.fairness_score.values()):
-        state.dipendente_piu_sfortunato.append(lavoratore_piu_sfortunato)
         return {
                 "fairness_score": punteggi,
                 "best_plan": state.piano_attuale,  
-                "dipendente_piu_sfortunato": state.dipendente_piu_sfortunato,
+                "dipendente_piu_sfortunato": dipendenti_sfortunati,
                 "terminazione_raggiunta": False    
             }
     
@@ -183,14 +185,14 @@ def evaluate_fairness_node(state: SchedulerForm) -> SchedulerForm:
     if media_nuovi_punteggi >= media_vecchi_punteggi:
         return {
             "condizione_di_stop": "Fairness Score Non Migliorato",
+            "dipendente_piu_sfortunato": dipendenti_sfortunati,
             "terminazione_raggiunta": True
         }
     if media_nuovi_punteggi < media_vecchi_punteggi:
-        state.dipendente_piu_sfortunato.append(lavoratore_piu_sfortunato)
         return {
                 "fairness_score": punteggi,
                 "best_plan": state.piano_attuale,  
-                "dipendente_piu_sfortunato": state.dipendente_piu_sfortunato,
+                "dipendente_piu_sfortunato": dipendenti_sfortunati,
                 "terminazione_raggiunta": False    
             }
     
