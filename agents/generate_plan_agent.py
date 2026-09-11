@@ -130,7 +130,7 @@ def generate_plan_node(state: SchedulerForm) -> SchedulerForm:
     """
     #print("Generazione del piano in corso...")
     #print("Generazione del piano completata") 
-    return { "n_iter_piano": state.n_iter_piano + 1,"piano_attuale" : leggi_piano_da_excel("/home/angelo/Project/uni/AI/progetto/output/piano_di_turni_1781509446.534241.xlsx").model_dump()}
+    #return { "n_iter_piano": state.n_iter_piano + 1,"piano_attuale" : leggi_piano_da_excel("/home/angelo/Project/uni/AI/progetto/output/piano_di_turni_1781509446.534241.xlsx").model_dump()}
     prompt_variables = { "calendario": CALENDARIO , 
                         "hard_constraints": state.input['hard_constraints'].__str__(),
                         "strategy": state.planner_strategy ,
