@@ -141,6 +141,9 @@ def verify_hard_constraints_node(state: SchedulerForm) -> SchedulerForm:
 def evaluate_fairness_node(state: SchedulerForm) -> SchedulerForm:
     
     print('Valutazione della fairness in corso')
+
+    print("PIANO:", state.piano_attuale.to_dict())
+    print("PREFERENZE:", state.vincoli_soft.__str__())
     
     punteggi : Dict = calcola_fairness(state.piano_attuale.to_dict(), [p.model_dump(mode="json") for p in state.vincoli_soft.preferenze_dipendenti])
 

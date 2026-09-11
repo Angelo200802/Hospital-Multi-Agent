@@ -6,105 +6,111 @@
 from ortools.sat.python import cp_model
 
 def crea_modello_vincoli_hard(model, shifts, std_nurses, spec_nurses):
-    # Unione di tutti i lavoratori (Standard + Specializzati)
+    # Unione di tutti i lavoratori per iterare facilmente
     all_nurses = std_nurses + spec_nurses
-    
+    num_days = 31  # Dal 7 Dicembre al 6 Gennaio compresi
+
     # CoT:
     # 1. Obiettivo: Creare le variabili decisionali booleane per ciascun infermiere, giorno e turno.
-    # 2. Variabili e indici: 'n' in all_nurses, 'd' in range(31) (31 giorni dal 7 Dicembre al 6 Gennaio), 's' in range(3) (0=Mattina, 1=Pomeriggio, 2=Notte).
-    # 3. Funzione OR-Tools: model.NewBoolVar per creare variabili booleane e salvarle nel dizionario 'shifts' con chiave (n, d, s).
+    # 2. Variabili: shifts[(n, d, s)] dove n è l'ID dell'infermiere, d è il giorno (0-30), s è il turno (0=Mattina, 1=Pomeriggio, 2=Notte).
+    # 3. Funzione OR-Tools: model.NewBoolVar per ogni combinazione.
     for n in all_nurses:
-        for d in range(31):
+        for d in range(num_days):
             for s in range(3):
                 shifts[(n, d, s)] = model.NewBoolVar(f"shift_{n}_{d}_{s}")
-                
+
     # CoT:
     # 1. Obiettivo: Garantire la copertura minima per ogni turno di ogni giorno.
-    #    - Se ci sono infermieri specializzati (Caso B): almeno 3 infermieri totali per turno, di cui almeno 1 specializzato.
-    #    - Se non ci sono infermieri specializzati (Caso A): almeno 2 infermieri totali per turno.
-    # 2. Variabili e indici: 'd' in range(31), 's' in range(3), 'n' in all_nurses, 'spec' in spec_nurses.
-    # 3. Funzione OR-Tools: model.Add(sum(...) >= 3) e model.Add(sum(...) >= 1) per il Caso B, oppure model.Add(sum(...) >= 2) per il Caso A.
-    for d in range(31):
-        for s in range(3):
-            if len(spec_nurses) > 0:
-                # Caso B: Lavoratori Misti
-                # Almeno 3 lavoratori in totale per turno
-                model.Add(sum(shifts[(n, d, s)] for n in all_nurses) >= 3)
-                # Almeno 1 lavoratore specializzato per turno
-                model.Add(sum(shifts[(n, d, s)] for n in spec_nurses) >= 1)
-            else:
-                # Caso A: Lavoratori Omogenei
-                # Almeno 2 lavoratori in totale per turno
+    #    - Caso A (Lavoratori Omogenei, se spec_nurses è vuoto): almeno 2 lavoratori per turno.
+    #    - Caso B (Lavoratori Misti, se spec_nurses non è vuoto): almeno 3 lavoratori totali per turno, di cui almeno 1 specializzato.
+    # 2. Variabili: shifts[(n, d, s)] per tutti i dipendenti e per i soli specializzati.
+    # 3. Funzione OR-Tools: model.Add(sum(...) >= valore) per ogni giorno d e turno s.
+    if len(spec_nurses) == 0:
+        # Caso A
+        for d in range(num_days):
+            for s in range(3):
                 model.Add(sum(shifts[(n, d, s)] for n in all_nurses) >= 2)
+    else:
+        # Caso B
+        for d in range(num_days):
+            for s in range(3):
+                # Almeno 3 lavoratori in totale
+                model.Add(sum(shifts[(n, d, s)] for n in all_nurses) >= 3)
+                # Almeno 1 lavoratore specializzato
+                model.Add(sum(shifts[(n, d, s)] for n in spec_nurses) >= 1)
 
     # CoT:
     # 1. Obiettivo: Impedire ad un dipendente di lavorare in più di un turno nello stesso giorno.
-    # 2. Variabili e indici: 'n' in all_nurses, 'd' in range(31), 's' in range(3).
-    # 3. Funzione OR-Tools: model.Add(sum(shifts[(n, d, s)] for s in range(3)) <= 1).
+    # 2. Variabili: shifts[(n, d, s)] per un dipendente n e giorno d, su tutti i turni s (0, 1, 2).
+    # 3. Funzione OR-Tools: model.Add(sum(shifts[(n, d, s)] per s in range(3)) <= 1).
     for n in all_nurses:
-        for d in range(31):
+        for d in range(num_days):
             model.Add(sum(shifts[(n, d, s)] for s in range(3)) <= 1)
 
     # CoT:
-    # 1. Obiettivo: Evitare che un dipendente lavori nel turno di Mattina (s=0) del giorno d+1 dopo aver lavorato nel turno di Notte (s=2) del giorno d.
-    # 2. Variabili e indici: 'n' in all_nurses, 'd' in range(30) (fino al penultimo giorno), 's' in {0, 2}.
-    # 3. Funzione OR-Tools: model.AddImplication(shifts[(n, d, 2)], shifts[(n, d+1, 0)].Not()).
+    # 1. Obiettivo: Impedire l'assegnazione di turni consecutivi a cavallo di due giorni che causano riposo insufficiente.
+    #    Nello specifico, impedire il turno di Mattina (s=0) il giorno successivo a un turno di Pomeriggio (s=1).
+    #    Il caso Notte (s=2) -> Mattina (s=0) è già coperto in modo più restrittivo dal vincolo dei riposi post-notte.
+    # 2. Variabili: shifts[(n, d, 1)] (Pomeriggio) e shifts[(n, d+1, 0)] (Mattina del giorno dopo) per ogni dipendente n e giorno d da 0 a 29.
+    # 3. Funzione OR-Tools: model.AddImplication(shifts[(n, d, 1)], shifts[(n, d+1, 0)].Not()).
     for n in all_nurses:
-        for d in range(30):
-            model.AddImplication(shifts[(n, d, 2)], shifts[(n, d+1, 0)].Not())
+        for d in range(num_days - 1):
+            model.AddImplication(shifts[(n, d, 1)], shifts[(n, d + 1, 0)].Not())
 
     # CoT:
     # 1. Obiettivo: Garantire 2 giorni interi di riposo consecutivi dopo un turno di Notte (s=2).
-    #    Se un dipendente lavora di Notte il giorno 'd', non può lavorare in nessun turno nei giorni 'd+1' e 'd+2'.
-    # 2. Variabili e indici: 'n' in all_nurses, 'd' in range(31), 's' in range(3).
-    # 3. Funzione OR-Tools: model.AddImplication per imporre che se shifts[(n, d, 2)] è True, allora tutti i turni dei giorni d+1 (se d+1 < 31) e d+2 (se d+2 < 31) devono essere False.
+    #    Quindi, se lavora di Notte il giorno d, non può lavorare in nessun turno nei giorni d+1 e d+2.
+    # 2. Variabili: shifts[(n, d, 2)] e shifts[(n, d+k, s)] per k in [1, 2] e s in [0, 1, 2].
+    # 3. Funzione OR-Tools: model.AddImplication(shifts[(n, d, 2)], shifts[(n, d+k, s)].Not()) per d+k < 31.
     for n in all_nurses:
-        for d in range(31):
-            # Giorno d+1 (smonto)
-            if d + 1 < 31:
+        for d in range(num_days):
+            # Giorno successivo (d+1)
+            if d + 1 < num_days:
                 for s in range(3):
-                    model.AddImplication(shifts[(n, d, 2)], shifts[(n, d+1, s)].Not())
-            # Giorno d+2 (recupero)
-            if d + 2 < 31:
+                    model.AddImplication(shifts[(n, d, 2)], shifts[(n, d + 1, s)].Not())
+            # Secondo giorno successivo (d+2)
+            if d + 2 < num_days:
                 for s in range(3):
-                    model.AddImplication(shifts[(n, d, 2)], shifts[(n, d+2, s)].Not())
+                    model.AddImplication(shifts[(n, d, 2)], shifts[(n, d + 2, s)].Not())
 
     # CoT:
-    # 1. Obiettivo: Assicurare che ogni lavoratore copra esattamente 25 turni di carico nel mese.
+    # 1. Obiettivo: Rispettare il carico di lavoro mensile di esattamente 25 turni equivalenti.
     #    I turni di Mattina (s=0) e Pomeriggio (s=1) valgono 1, il turno di Notte (s=2) vale 2.
-    # 2. Variabili e indici: 'n' in all_nurses, 'd' in range(31), 's' in range(3).
-    # 3. Funzione OR-Tools: model.Add(sum(shifts[(n, d, 0)] + shifts[(n, d, 1)] + 2 * shifts[(n, d, 2)] for d in range(31)) == 25).
+    # 2. Variabili: shifts[(n, d, s)] per ogni dipendente n su tutto il mese.
+    # 3. Funzione OR-Tools: model.Add(sum(shifts[(n, d, 0)] + shifts[(n, d, 1)] + 2 * shifts[(n, d, 2)] per d in range(31)) == 25).
     for n in all_nurses:
         model.Add(
-            sum(shifts[(n, d, 0)] + shifts[(n, d, 1)] + 2 * shifts[(n, d, 2)] for d in range(31)) == 25
+            sum(shifts[(n, d, 0)] + shifts[(n, d, 1)] + 2 * shifts[(n, d, 2)] for d in range(num_days)) == 25
         )
 
     # CoT:
-    # 1. Obiettivo: Limitare il tempo di lavoro settimanale a massimo 36 ore su finestre fisse di 7 giorni.
-    #    Mattina (s=0) = 6 ore, Pomeriggio (s=1) = 6 ore, Notte (s=2) = 12 ore.
-    # 2. Variabili e indici: 'n' in all_nurses, 'w' (indice settimana), 'd' nei giorni della settimana.
-    #    Definiamo 5 settimane fisse: giorni 0-6, 7-13, 14-20, 21-27, 28-30.
-    # 3. Funzione OR-Tools: model.Add(sum(6 * shifts[(n, d, 0)] + 6 * shifts[(n, d, 1)] + 12 * shifts[(n, d, 2)] for d in week_days) <= 36).
+    # 1. Obiettivo: Limitare le ore di lavoro settimanali a un massimo di 36 ore su finestre fisse di 7 giorni.
+    #    Le ore sono: Mattina (s=0) = 6h, Pomeriggio (s=1) = 6h, Notte (s=2) = 12h.
+    #    Le settimane fisse sono: Giorni 0-6, 7-13, 14-20, 21-27, 28-30.
+    # 2. Variabili: shifts[(n, d, s)] per ogni dipendente n, raggruppati per settimana.
+    # 3. Funzione OR-Tools: model.Add(sum(6 * shifts[(n, d, 0)] + 6 * shifts[(n, d, 1)] + 12 * shifts[(n, d, 2)] per d in settimana) <= 36).
     weeks = [
-        range(0, 7),    # Settimana 1: 7 Dic - 13 Dic
-        range(7, 14),   # Settimana 2: 14 Dic - 20 Dic
-        range(14, 21),  # Settimana 3: 21 Dic - 27 Dic
-        range(21, 28),  # Settimana 4: 28 Dic - 3 Gen
-        range(28, 31)   # Settimana 5: 4 Gen - 6 Gen (parziale)
+        range(0, 7),    # Settimana 1
+        range(7, 14),   # Settimana 2
+        range(14, 21),  # Settimana 3
+        range(21, 28),  # Settimana 4
+        range(28, 31)   # Settimana 5 (giorni rimanenti)
     ]
     for n in all_nurses:
-        for week_days in weeks:
+        for week in weeks:
             model.Add(
-                sum(6 * shifts[(n, d, 0)] + 6 * shifts[(n, d, 1)] + 12 * shifts[(n, d, 2)] for d in week_days) <= 36
+                sum(6 * shifts[(n, d, 0)] + 6 * shifts[(n, d, 1)] + 12 * shifts[(n, d, 2)] for d in week) <= 36
             )
 
     # CoT:
-    # 1. Obiettivo: Garantire ad ogni dipendente almeno un giorno di riposo assoluto (0 turni assegnati) nel mese.
-    # 2. Variabili e indici: 'n' in all_nurses, 'd' in range(31), 's' in range(3).
-    # 3. Funzione OR-Tools: Poiché un dipendente può fare al massimo 1 turno al giorno, se lavorasse tutti i giorni farebbe 31 turni.
-    #    Imponendo che la somma dei turni effettivi lavorati nel mese sia <= 30, garantiamo matematicamente che ci sia almeno un giorno con 0 turni (riposo assoluto).
-    #    model.Add(sum(shifts[(n, d, s)] for d in range(31) for s in range(3)) <= 30).
+    # 1. Obiettivo: Garantire almeno un giorno di riposo assoluto (nessun turno) nell'arco del mese.
+    #    Dato che un dipendente può fare al massimo 1 turno al giorno, se lavora in totale in al massimo 30 giorni,
+    #    avrà necessariamente almeno 1 giorno di riposo assoluto su 31 giorni totali.
+    # 2. Variabili: shifts[(n, d, s)] per ogni dipendente n su tutto il mese.
+    # 3. Funzione OR-Tools: model.Add(sum(shifts[(n, d, s)] per d in range(31) per s in range(3)) <= 30).
     for n in all_nurses:
-        model.Add(sum(shifts[(n, d, s)] for d in range(31) for s in range(3)) <= 30)
+        model.Add(
+            sum(shifts[(n, d, s)] for d in range(num_days) for s in range(3)) <= (num_days - 1)
+        )
 
     return model, shifts

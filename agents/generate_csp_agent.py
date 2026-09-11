@@ -90,9 +90,9 @@ Il codice di un CSP generato precedentemente dall'altro Coding Agent, contenente
 
 ## Struttura della Funzione:
 Genera esclusivamente la seguente funzione:
-`def estrai_feedback_errori_hard(piano_assegnamenti, std_nurses, spec_nurses):`
-- `piano_assegnamenti`: è una lista Python di coppie [{{chiave_entità: lista_di_valori}}].
-- `std_nurses`, `spec_nurses`: liste di chiavi.
+`def estrai_feedback_errori_hard(piano_assegnamenti, std_nurses, spec_nurses) -> list[str]:`
+- `piano_assegnamenti`: dict[str, list[str]].
+- `std_nurses`, `spec_nurses`: list[str].
 La funzione deve inizializzare una lista `errori = []` e restituirla alla fine `return errori`.
 
 ATTENZIONE: Il dizionario `piano_assegnamenti` contiene liste di lettere testuali (es. 'M', 'P', 'N', 'R') per ogni dipendente. 
