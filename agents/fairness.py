@@ -128,6 +128,8 @@ def calcola_fairness(piano: dict, preferenze_dipendenti: list) -> dict:
                 )
             if not rispettato:
                 penalita += peso_riposo_val
+            else:
+                penalita -= peso_riposo_val / 2  # bonus se rispettato
 
         # Regola 7: turni consecutivi dello stesso tipo non tollerati
         for item in pref.get("tolleranza_turni_consecutivi") or []:
@@ -137,6 +139,7 @@ def calcola_fairness(piano: dict, preferenze_dipendenti: list) -> dict:
                 if _turno_corrisponde(categoria, turni[d], giorni_info[d]) and \
                    _turno_corrisponde(categoria, turni[d - 1], giorni_info[d - 1]):
                     penalita += peso_val
+                else : penalita -= peso_val / 2  
 
         risultati[emp_id] = round(penalita, 2)
 

@@ -22,7 +22,7 @@
     ],
     "iterazioni_correzioni_preferenze": 0,
     "iterazioni_piano": 5,
-    "iterazioni_raffinazioni": 1,
+    "iterazioni_raffinazioni": 2,
     "fairness_score": {
         "A": -22.5,
         "B": 0.0,
@@ -45,7 +45,7 @@
         "S": 24.0
     },
     "dipendente_piu_sfortunato": [
-        "D"
+        "D", "D"
     ],
     "condizione_di_stop": "Fairness Score Non Migliorato"
 }

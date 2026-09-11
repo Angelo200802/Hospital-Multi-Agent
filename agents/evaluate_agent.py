@@ -1,4 +1,4 @@
-from input_type import SchedulerForm, GiornoSettimana, Piano, TurnoAssegnato
+from input_type import SchedulerForm, Piano
 from .fairness import calcola_fairness
 from typing import Dict, List
 from datetime import date, timedelta

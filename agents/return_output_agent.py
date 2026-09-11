@@ -1,6 +1,7 @@
 from input_type import SchedulerForm, TurnoAssegnato
 from datetime import date, timedelta
 import pandas as pd
+import numpy as np
 import os, time, json
 
 
@@ -59,7 +60,18 @@ def return_output_node(state: SchedulerForm) -> SchedulerForm:
                 "iterazioni_piano": state.n_iter_piano,
                 "iterazioni_raffinazioni": state.n_iter_raffinazioni,
                 "fairness_score": state.fairness_score,
-                "dipendente_piu_sfortunato": state.dipendente_piu_sfortunato,
+                "stats":{
+                    "mean" : np.mean(state.fairness_score.values()),
+                    "median" : np.median(state.fairness_score.values()),
+                    "std" : np.std(state.fairness_score.values()),
+                    "min" : {
+                        min(state.fairness_score, key=state.fairness_score.get): np.min(state.fairness_score.values())
+                    },
+                    "max" : {
+                        max(state.fairness_score, key=state.fairness_score.get): np.max(state.fairness_score.values())
+                        }
+                },
+                "dipendenti_piu_sfortunati": state.dipendente_piu_sfortunato,
                 "condizione_di_stop": state.condizione_di_stop 
             }, indent=4))
     except Exception as e:
