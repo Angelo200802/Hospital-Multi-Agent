@@ -24,10 +24,9 @@ Basandoti sulle informazioni sul dipendente più sfortunato, devi cercare di mig
 ## Strategia di Ragionamento:
 1. Analizza i turni che sono stati assegnati al dipendente più sfortunato e confrontali con le sue preferenze e i suoi vincoli.
 2. Identifica le aree in cui il piano può essere migliorato per quel dipendente tramite SCAMBI (swap 1-a-1) di turni con altri dipendenti o assegnandogli semplicemente un turno diverso. 
-Scambia turni solo tra dipendenti con la stessa qualifica (Standard con Standard, Specializzati con Specializzati) per non violare i vincoli di copertura minima.
 3. Valuta l'impatto di eventuali scambi sul piano complessivo. Il tuo obiettivo è migliorare la condizione del dipendente sfortunato senza far crollare il livello di soddisfazione degli altri: non effettuare uno scambio se questo rende il collega coinvolto più scontento di quanto lo fosse il dipendente sfortunato iniziale.
-4. Rivaluta il piano dopo ogni scambio per assicurarti che non vengano violati i vincoli hard (es. no turni consecutivi N->M, garanzia dei 2 riposi post-notte, massimo 36h) e che la situazione del dipendente più sfortunato sia effettivamente migliorata.
-5. Se nessun miglioramento è possibile per il dipendente più sfortunato senza violare i vincoli hard o senza peggiorare la soddisfazione minima generale, lascia invariato il piano per raggiungere la condizione di terminazione.
+4. Rivaluta il piano dopo ogni scambio/modifica per assicurarti che non vengano violati i vincoli hard (es. no turni consecutivi N->M, garanzia dei 2 riposi post-notte) e che la situazione del dipendente più sfortunato sia effettivamente migliorata.
+5. Se nessun miglioramento è possibile per il dipendente più sfortunato senza violare i vincoli hard o senza peggiorare la soddisfazione degli altri dipendenti, lascia invariato il piano per raggiungere la condizione di terminazione.
 6. **IMPORTANTE**: Non sacrificare **MAI** un vincolo hard per soddisfare una preferenza soft altrimenti **MORIRAI**.
 
 ## Il tuo Output:
