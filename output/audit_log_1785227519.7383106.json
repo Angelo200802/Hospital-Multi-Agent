@@ -44,8 +44,19 @@
         "R": 0.0,
         "S": 24.0
     },
-    "dipendente_piu_sfortunato": [
-        "D", "D"
+    "stats": {
+        "mean": 9.368421052631579,
+        "median": 0.0,
+        "std": 22.649411579008984,
+        "min": {
+            "A": -22.5
+        },
+        "max": {
+            "D": 72.0
+        }
+    },
+    "dipendenti_piu_sfortunati": [
+        "D con punteggio 72.0", "D con punteggio 72.0"
     ],
     "condizione_di_stop": "Fairness Score Non Migliorato"
 }

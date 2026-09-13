@@ -15,7 +15,7 @@
         "M"
     ],
     "iterazioni_correzioni_preferenze": 1,
-    "iterazioni_piano": 5,
+    "iterazioni_piano": 3,
     "iterazioni_raffinazioni": 5,
     "fairness_score": {
         "A": -32.5,
